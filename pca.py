@@ -33,32 +33,25 @@ from pathlib import Path
 
 import numpy as np
 import rapids_singlecell as rsc
+from obkit.logger import init_logger
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 from cli import build_pca_parser  # noqa: E402
 from gpu import setup_gpu  # noqa: E402
 from loaders import load_matrix  # noqa: E402
+from phases import phase  # noqa: E402
 from writers import Embedding, write_embeddings  # noqa: E402
 
 
 def run_pca(adata, args):
-    """Run rapids-singlecell PCA on the GPU. Mutates adata; returns embedding (numpy)."""
-    rsc.get.anndata_to_GPU(adata)
-
+    """GPU-only PCA. Pre/post: adata stays on GPU. Mutates in place."""
     rsc.pp.scale(adata, zero_center=True, max_value=None)
-
     rsc.pp.pca(
         adata,
         n_comps=args.n_components,
         zero_center=True,
         random_state=args.random_seed,
     )
-
-    # Bring obsm/varm/uns back to host so downstream numpy code doesn't trip
-    # on cupy arrays.
-    rsc.get.anndata_to_CPU(adata, convert_all=True)
-
-    return np.asarray(adata.obsm["X_pca"], dtype=np.float64)
 
 
 def main():
@@ -68,20 +61,34 @@ def main():
         print(f"  {k}: {getattr(args, k)}")
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    init_logger(args.output_dir)
 
     setup_gpu()
 
-    adata = load_matrix(args.input_h5)
-    cell_ids = np.array(adata.obs_names)
-    print(f"  matrix (cells x genes): {adata.shape}")
+    with phase("load") as attrs:
+        adata = load_matrix(args.input_h5)
+        cell_ids = np.array(adata.obs_names)
+        attrs["n_cells"], attrs["n_genes"] = adata.shape
+        print(f"  matrix (cells x genes): {adata.shape}")
 
-    embedding = run_pca(adata, args)
-    print(f"  embedding: {embedding.shape}")
+    with phase("gpu_upload"):
+        rsc.get.anndata_to_GPU(adata)
 
-    col_names = [f"PC{i + 1}" for i in range(embedding.shape[1])]
-    out = Path(args.output_dir) / f"{args.name}_pcas.tsv"
-    write_embeddings(Embedding(embedding, list(cell_ids), col_names), out)
-    print(f"  wrote: {out}")
+    with phase("compute") as attrs:
+        run_pca(adata, args)
+        attrs["n_components"] = args.n_components
+
+    with phase("gpu_download"):
+        rsc.get.anndata_to_CPU(adata, convert_all=True)
+
+    with phase("write") as attrs:
+        embedding = np.asarray(adata.obsm["X_pca"], dtype=np.float64)
+        col_names = [f"PC{i + 1}" for i in range(embedding.shape[1])]
+        out = Path(args.output_dir) / f"{args.name}_pcas.tsv"
+        write_embeddings(Embedding(embedding, list(cell_ids), col_names), out)
+        attrs["path"] = str(out)
+        print(f"  embedding: {embedding.shape}")
+        print(f"  wrote: {out}")
 
 
 if __name__ == "__main__":

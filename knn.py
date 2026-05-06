@@ -36,40 +36,33 @@ import sys
 from pathlib import Path
 
 import anndata as ad
-import h5py
 import numpy as np
 import rapids_singlecell as rsc
+from obkit.logger import init_logger
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 from cli import build_knn_parser  # noqa: E402
 from gpu import setup_gpu  # noqa: E402
-from writers import read_embeddings  # noqa: E402
+from phases import phase  # noqa: E402
+from writers import NeighborGraph, read_embeddings, write_graph  # noqa: E402
 
 
-def write_sparse(h5, name, m):
-    m = m.tocsr()
-    g = h5.create_group(name)
-    g.create_dataset("data",    data=m.data)
-    g.create_dataset("indices", data=m.indices)
-    g.create_dataset("indptr",  data=m.indptr)
-    g.create_dataset("shape",   data=np.array(m.shape))
-
-
-def run_knn(emb, args):
-    """Run rapids-singlecell neighbors on the GPU. Returns AnnData with obsp set."""
+def build_adata(emb):
+    """Wrap an Embedding in a host AnnData ready for upload to the GPU."""
     adata = ad.AnnData(X=np.zeros((emb.matrix.shape[0], 1), dtype=np.float32))
     adata.obs_names = emb.row_ids
     adata.obsm["X_pca"] = emb.matrix.astype(np.float32)
+    return adata
 
-    rsc.get.anndata_to_GPU(adata)
+
+def run_knn(adata, args):
+    """GPU-only neighbors. Pre/post: adata stays on GPU. Mutates in place."""
     rsc.pp.neighbors(
         adata,
         n_neighbors=args.n_neighbors,
         use_rep="X_pca",
         random_state=args.random_seed,
     )
-    rsc.get.anndata_to_CPU(adata, convert_all=True)
-    return adata
 
 
 def main():
@@ -79,26 +72,40 @@ def main():
         print(f"  {k}: {getattr(args, k)}")
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    init_logger(args.output_dir)
 
     setup_gpu()
 
-    emb = read_embeddings(args.pcas_tsv)
-    print(f"  embedding: {emb.matrix.shape}")
+    with phase("load") as attrs:
+        emb = read_embeddings(args.pcas_tsv)
+        adata = build_adata(emb)
+        attrs["n_cells"], attrs["n_components"] = emb.matrix.shape
+        print(f"  embedding: {emb.matrix.shape}")
 
-    adata = run_knn(emb, args)
-    print(f"  distances nnz:      {adata.obsp['distances'].nnz}")
-    print(f"  connectivities nnz: {adata.obsp['connectivities'].nnz}")
+    with phase("gpu_upload"):
+        rsc.get.anndata_to_GPU(adata)
 
-    out = Path(args.output_dir) / f"{args.name}_knn.h5"
-    with h5py.File(out, "w") as h5:
-        write_sparse(h5, "distances",      adata.obsp["distances"])
-        write_sparse(h5, "connectivities", adata.obsp["connectivities"])
-        h5.create_dataset(
-            "cell_ids",
-            data=np.array(emb.row_ids, dtype=h5py.string_dtype()),
+    with phase("compute") as attrs:
+        run_knn(adata, args)
+        attrs["n_neighbors"] = args.n_neighbors
+
+    with phase("gpu_download"):
+        rsc.get.anndata_to_CPU(adata, convert_all=True)
+
+    with phase("write") as attrs:
+        out = Path(args.output_dir) / f"{args.name}_knn.h5"
+        graph = NeighborGraph(
+            distances=adata.obsp["distances"],
+            connectivities=adata.obsp["connectivities"],
+            row_ids=list(emb.row_ids),
         )
-
-    print(f"  wrote: {out}")
+        write_graph(graph, out)
+        attrs["distances_nnz"] = int(graph.distances.nnz)
+        attrs["connectivities_nnz"] = int(graph.connectivities.nnz)
+        attrs["path"] = str(out)
+        print(f"  distances nnz:      {attrs['distances_nnz']}")
+        print(f"  connectivities nnz: {attrs['connectivities_nnz']}")
+        print(f"  wrote: {out}")
 
 
 if __name__ == "__main__":

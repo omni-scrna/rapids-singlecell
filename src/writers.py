@@ -3,7 +3,9 @@
 import csv
 from dataclasses import dataclass, field
 
+import h5py
 import numpy as np
+import scipy.sparse as sp
 
 @dataclass
 class Embedding:
@@ -59,3 +61,36 @@ def read_embeddings(path, format="tsv"):
     if format == "tsv":
         return _read_tsv(path)
     raise ValueError(f"unsupported format: {format!r}")
+
+
+@dataclass
+class NeighborGraph:
+    distances: sp.csr_matrix       # n_cells x n_cells, sparse
+    connectivities: sp.csr_matrix  # n_cells x n_cells, sparse
+    row_ids: list                  # cell barcodes, length n_cells
+
+
+def _write_h5_sparse(h5, name, m):
+    m = m.tocsr()
+    g = h5.create_group(name)
+    g.create_dataset("data",    data=m.data)
+    g.create_dataset("indices", data=m.indices)
+    g.create_dataset("indptr",  data=m.indptr)
+    g.create_dataset("shape",   data=np.array(m.shape))
+
+
+def _write_h5_graph(path, graph):
+    with h5py.File(path, "w") as h5:
+        _write_h5_sparse(h5, "distances",      graph.distances)
+        _write_h5_sparse(h5, "connectivities", graph.connectivities)
+        h5.create_dataset(
+            "cell_ids",
+            data=np.array(graph.row_ids, dtype=h5py.string_dtype()),
+        )
+
+
+def write_graph(obj, path, format="h5"):
+    if format == "h5":
+        _write_h5_graph(path, obj)
+    else:
+        raise ValueError(f"unsupported format: {format!r}")

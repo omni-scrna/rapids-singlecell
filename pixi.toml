@@ -23,6 +23,7 @@ pip = "*"
 
 [pypi-dependencies]
 rapids-singlecell = { version = "==0.14.1", extras = ["rapids13"] }
+obkit = ">=0.0.3, <0.0.4"
 
 [tasks]
 check = "python check.py"
