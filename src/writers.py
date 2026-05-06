@@ -36,3 +36,26 @@ def write_embeddings(obj, path, format="tsv"):
         _write_tsv(path, obj)
     else:
         raise ValueError(f"unsupported format: {format!r}")
+
+
+def _read_tsv(path):
+    rows = []
+    row_ids = []
+    with open(path, encoding="utf-8") as f:
+        reader = csv.reader(f, delimiter="\t")
+        col_names = next(reader)
+        for row in reader:
+            row_ids.append(row[0])
+            rows.append([float(x) for x in row[1:]])
+    return Embedding(
+        matrix=np.array(rows, dtype=np.float64),
+        row_ids=row_ids,
+        col_names=col_names,
+    )
+
+
+def read_embeddings(path, format="tsv"):
+    """Inverse of write_embeddings. Round-trip-stable for the TSV format."""
+    if format == "tsv":
+        return _read_tsv(path)
+    raise ValueError(f"unsupported format: {format!r}")

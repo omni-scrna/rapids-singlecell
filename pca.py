@@ -32,21 +32,13 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import cupy as cp
-import rmm
-from rmm.allocators.cupy import rmm_cupy_allocator
 import rapids_singlecell as rsc
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 from cli import build_pca_parser  # noqa: E402
+from gpu import setup_gpu  # noqa: E402
 from loaders import load_matrix  # noqa: E402
 from writers import Embedding, write_embeddings  # noqa: E402
-
-
-def setup_gpu():
-    """Initialize RMM + CuPy allocator. Conservative settings for benchmarking."""
-    rmm.reinitialize(managed_memory=False, pool_allocator=False)
-    cp.cuda.set_allocator(rmm_cupy_allocator)
 
 
 def run_pca(adata, args):

@@ -9,23 +9,30 @@ Conventions:
 - argparse.parse_args() rejects unknown flags by default; we rely on that
   for strictness rather than parse_known_args().
 
-Solver token convention
------------------------
-For PCA, ``--solver`` currently accepts a single opaque token: ``rapids``.
+Token conventions
+-----------------
+Both ``--solver`` (PCA) and ``--flavor`` (kNN) currently accept a single
+opaque token: ``rapids``. This is deliberately *coarser* than cuML's
+internal knob sets. Each benchmark cell should correspond to a single
+labeled method, not a free-form combination of sub-knobs. To compare
+cuML algorithms head-to-head later, extend ``choices=`` here with new
+tokens rather than exposing sub-knob flags.
 
-This is deliberately *coarser* than cuML's internal knob set
-(``svd_solver`` ∈ {auto, full, jacobi}, plus a sparse truncated-SVD branch).
-Each benchmark cell should correspond to a single labeled method, not a
-free-form combination of sub-knobs. So when we want to compare cuML's
-algorithms head-to-head later, we extend ``choices=`` here with new tokens
-rather than exposing a sub-solver flag:
-
+PCA solver tokens (cuML's ``svd_solver`` axis):
     rapids               -> cuML default (auto), zero-centered
     rapids-full          -> svd_solver="full"
     rapids-jacobi        -> svd_solver="jacobi"
     rapids-truncated     -> sparse truncated SVD path (zero_center=False)
 
-The scanpy module uses the same pattern (``arpack`` / ``randomized``).
+kNN flavor tokens (ANN search backend axis):
+    rapids               -> rsc.pp.neighbors default (currently CAGRA)
+    rapids-cagra         -> CAGRA explicitly
+    rapids-ivf-flat      -> IVF-Flat
+    rapids-ivf-pq        -> IVF-PQ (lossy, faster on very large data)
+    rapids-brute         -> brute-force (reference, slow)
+
+The scanpy module uses the same pattern (``arpack`` / ``randomized`` for
+PCA; ``umap`` / ``gauss`` for kNN).
 """
 
 import argparse
@@ -54,5 +61,22 @@ def build_pca_parser():
                         help="Number of principal components to compute")
     parser.add_argument("--random_seed", type=int, required=True,
                         help="Seed for reproducibility")
+
+    return parser
+
+
+def build_knn_parser():
+    parser = argparse.ArgumentParser(description="OmniBenchmark kNN module (rapids-singlecell)")
+    add_common_args(parser)
+
+    parser.add_argument("--pcas.tsv", dest="pcas_tsv", type=str, required=True,
+                        help="PCA TSV produced by the pca entrypoint (cell-id-indexed PC scores)")
+    parser.add_argument("--n_neighbors", type=int, required=True,
+                        help="Number of nearest neighbors")
+    parser.add_argument("--flavor", type=str, required=True,
+                        choices=["rapids"],
+                        help="kNN flavor token (see module docstring for the rapids-* extension scheme)")
+    parser.add_argument("--random_seed", type=int, required=True,
+                        help="Random seed")
 
     return parser
