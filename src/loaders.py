@@ -17,6 +17,7 @@ out to match AnnData conventions.
 
 import anndata as ad
 import h5py
+import numpy as np
 import scipy.sparse as sp
 
 
@@ -34,4 +35,23 @@ def load_matrix(h5_path):
     adata = ad.AnnData(X=X)
     adata.obs_names = cell_ids
     adata.var_names = gene_ids
+    return adata
+
+
+def embedding_to_adata(embedding):
+    """Wrap an Embedding in a host AnnData with the matrix in obsm["X_pca"]."""
+    n = len(embedding.row_ids)
+    adata = ad.AnnData(X=np.zeros((n, 1), dtype=np.float32))
+    adata.obs_names = embedding.row_ids
+    adata.obsm["X_pca"] = embedding.matrix.astype(np.float32)
+    return adata
+
+
+def graph_to_adata(graph):
+    """Wrap a NeighborGraph in a host AnnData ready for upload to the GPU."""
+    n = graph.connectivities.shape[0]
+    adata = ad.AnnData(X=np.zeros((n, 1), dtype=np.float32))
+    adata.obs_names = graph.row_ids
+    adata.obsp["connectivities"] = graph.connectivities
+    adata.obsp["distances"]      = graph.distances
     return adata

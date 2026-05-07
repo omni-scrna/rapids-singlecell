@@ -9,7 +9,13 @@ import cupy as cp
 import rmm
 from rmm.allocators.cupy import rmm_cupy_allocator
 
+_initialized = False
+
 
 def setup_gpu():
+    global _initialized
+    if _initialized:
+        return
     rmm.reinitialize(managed_memory=False, pool_allocator=False)
     cp.cuda.set_allocator(rmm_cupy_allocator)
+    _initialized = True

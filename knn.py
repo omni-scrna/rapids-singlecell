@@ -35,24 +35,15 @@ Implementation notes
 import sys
 from pathlib import Path
 
-import anndata as ad
-import numpy as np
 import rapids_singlecell as rsc
 from obkit.logger import init_logger
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 from cli import build_knn_parser  # noqa: E402
 from gpu import setup_gpu  # noqa: E402
+from loaders import embedding_to_adata  # noqa: E402
 from phases import phase  # noqa: E402
 from writers import NeighborGraph, read_embeddings, write_graph  # noqa: E402
-
-
-def build_adata(emb):
-    """Wrap an Embedding in a host AnnData ready for upload to the GPU."""
-    adata = ad.AnnData(X=np.zeros((emb.matrix.shape[0], 1), dtype=np.float32))
-    adata.obs_names = emb.row_ids
-    adata.obsm["X_pca"] = emb.matrix.astype(np.float32)
-    return adata
 
 
 def run_knn(adata, args):
@@ -78,7 +69,7 @@ def main():
 
     with phase("load") as attrs:
         emb = read_embeddings(args.pcas_tsv)
-        adata = build_adata(emb)
+        adata = embedding_to_adata(emb)
         attrs["n_cells"], attrs["n_components"] = emb.matrix.shape
         print(f"  embedding: {emb.matrix.shape}")
 

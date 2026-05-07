@@ -31,6 +31,19 @@ kNN flavor tokens (ANN search backend axis):
     rapids-ivf-pq        -> IVF-PQ (lossy, faster on very large data)
     rapids-brute         -> brute-force (reference, slow)
 
+Cluster method tokens (algorithm axis):
+    rapids-leiden        -> rsc.tl.leiden     (graph community detection)
+    rapids-louvain       -> rsc.tl.louvain    (graph community detection)
+    # future, on PCA embedding rather than graph:
+    rapids-kmeans        -> cuml.cluster.KMeans
+    rapids-hdbscan       -> cuml.cluster.HDBSCAN
+    rapids-dbscan        -> cuml.cluster.DBSCAN
+
+Note: the embedding-based cluster methods would need ``--pcas.tsv`` as
+input rather than ``--knn.h5``. When/if they're added, splitting into a
+separate ``cluster_embedding`` entrypoint is cleaner than carrying both
+inputs in this one.
+
 The scanpy module uses the same pattern (``arpack`` / ``randomized`` for
 PCA; ``umap`` / ``gauss`` for kNN).
 """
@@ -78,5 +91,43 @@ def build_knn_parser():
                         help="kNN flavor token (see module docstring for the rapids-* extension scheme)")
     parser.add_argument("--random_seed", type=int, required=True,
                         help="Random seed")
+
+    return parser
+
+
+def build_cluster_parser():
+    parser = argparse.ArgumentParser(description="OmniBenchmark cluster module (rapids-singlecell)")
+    add_common_args(parser)
+
+    parser.add_argument("--knn.h5", dest="knn_h5", type=str, required=True,
+                        help="kNN graph HDF5 produced by the knn entrypoint")
+    parser.add_argument("--method", type=str, required=True,
+                        choices=["rapids-leiden", "rapids-louvain"],
+                        help="Clustering method token (see module docstring)")
+    parser.add_argument("--resolution", type=float, required=True,
+                        help="Resolution parameter (higher -> more, smaller clusters)")
+    parser.add_argument("--random_seed", type=int, required=True,
+                        help="Random seed")
+
+    return parser
+
+
+def build_cluster_embedding_parser():
+    parser = argparse.ArgumentParser(description="OmniBenchmark cluster-embedding module (rapids-singlecell)")
+    add_common_args(parser)
+
+    parser.add_argument("--pcas.tsv", dest="pcas_tsv", type=str, required=True,
+                        help="PCA TSV produced by the pca entrypoint")
+    parser.add_argument("--method", type=str, required=True,
+                        choices=["rapids-kmeans", "rapids-hdbscan"],
+                        help="Clustering method token (see module docstring)")
+    parser.add_argument("--n_clusters", type=int, default=None,
+                        help="Number of clusters; required for rapids-kmeans")
+    parser.add_argument("--min_samples", type=int, default=None,
+                        help="Min samples per core point; required for rapids-hdbscan")
+    parser.add_argument("--min_cluster_size", type=int, default=None,
+                        help="Min cluster size; required for rapids-hdbscan")
+    parser.add_argument("--random_seed", type=int, required=True,
+                        help="Random seed (used by rapids-kmeans; ignored by rapids-hdbscan)")
 
     return parser

@@ -94,3 +94,67 @@ def write_graph(obj, path, format="h5"):
         _write_h5_graph(path, obj)
     else:
         raise ValueError(f"unsupported format: {format!r}")
+
+
+def _read_h5_sparse(g):
+    return sp.csr_matrix(
+        (g["data"][:], g["indices"][:], g["indptr"][:]),
+        shape=tuple(g["shape"][:]),
+    )
+
+
+def read_graph(path, format="h5"):
+    """Inverse of write_graph. Round-trip-stable for the HDF5 format."""
+    if format != "h5":
+        raise ValueError(f"unsupported format: {format!r}")
+    with h5py.File(path, "r") as h5:
+        return NeighborGraph(
+            distances=_read_h5_sparse(h5["distances"]),
+            connectivities=_read_h5_sparse(h5["connectivities"]),
+            row_ids=list(h5["cell_ids"][:].astype(str)),
+        )
+
+
+@dataclass
+class Labels:
+    values: np.ndarray   # shape (n_cells,)
+    row_ids: list        # length n_cells
+    col_name: str = "cluster"
+
+
+def _write_labels_tsv(path, labels):
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f, delimiter="\t", lineterminator="\n")
+        w.writerow([labels.col_name])
+        for cid, val in zip(labels.row_ids, labels.values):
+            w.writerow([cid, val])
+
+
+def write_labels(obj, path, format="tsv"):
+    if format == "tsv":
+        _write_labels_tsv(path, obj)
+    else:
+        raise ValueError(f"unsupported format: {format!r}")
+
+
+def _read_labels_tsv(path):
+    row_ids = []
+    values = []
+    with open(path, encoding="utf-8") as f:
+        reader = csv.reader(f, delimiter="\t")
+        col_name = next(reader)[0]
+        for row in reader:
+            row_ids.append(row[0])
+            values.append(row[1])
+    return Labels(
+        values=np.array(values, dtype=object),
+        row_ids=row_ids,
+        col_name=col_name,
+    )
+
+
+def read_labels(path, format="tsv"):
+    """Inverse of write_labels. Round-trip-stable for the TSV format."""
+    if format == "tsv":
+        return _read_labels_tsv(path)
+    raise ValueError(f"unsupported format: {format!r}")

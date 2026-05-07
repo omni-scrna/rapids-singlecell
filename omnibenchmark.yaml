@@ -4,3 +4,8 @@ entrypoints:
   pca: pca.py
   pca-prof: denet pca.py
   knn: knn.py
+  knn-prof: denet knn.py
+  cluster_graph: cluster_graph.py
+  cluster_graph-prof: denet cluster_graph.py
+  cluster_embedding: cluster_embedding.py
+  cluster_embedding-prof: denet cluster_embedding.py
