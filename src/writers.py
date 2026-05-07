@@ -1,11 +1,15 @@
 """Reusable writers for objects produced by this module, conforming to the omni-scrna benchmark spec."""
 
-import csv
 from dataclasses import dataclass, field
 
 import h5py
 import numpy as np
+import pandas as pd
 import scipy.sparse as sp
+
+TSV = "tsv"
+H5  = "h5"
+
 
 @dataclass
 class Embedding:
@@ -20,47 +24,24 @@ def _col_names(embedding):
     return [f"dim_{i + 1}" for i in range(embedding.matrix.shape[1])]
 
 
-def _row_iter(embedding):
-    # Header has N cols (no row-name label); data rows have N+1 cols so that
-    # read.table(f, header=TRUE) auto-promotes the first data column to row.names.
-    yield _col_names(embedding)
-    for cell_id, row in zip(embedding.row_ids, embedding.matrix):
-        yield [cell_id] + row.tolist()
-
-
-def _write_tsv(path, embedding):
-    with open(path, "w", encoding="utf-8", newline="") as f:
-        csv.writer(f, delimiter="\t", lineterminator="\n").writerows(_row_iter(embedding))
-
-
-def write_embeddings(obj, path, format="tsv"):
-    if format == "tsv":
-        _write_tsv(path, obj)
-    else:
+def write_embeddings(obj, path, format=TSV):
+    if format != TSV:
         raise ValueError(f"unsupported format: {format!r}")
-
-
-def _read_tsv(path):
-    rows = []
-    row_ids = []
-    with open(path, encoding="utf-8") as f:
-        reader = csv.reader(f, delimiter="\t")
-        col_names = next(reader)
-        for row in reader:
-            row_ids.append(row[0])
-            rows.append([float(x) for x in row[1:]])
-    return Embedding(
-        matrix=np.array(rows, dtype=np.float64),
-        row_ids=row_ids,
-        col_names=col_names,
+    pd.DataFrame(obj.matrix, index=obj.row_ids, columns=_col_names(obj)).to_csv(
+        path, sep="\t"
     )
 
 
-def read_embeddings(path, format="tsv"):
+def read_embeddings(path, format=TSV):
     """Inverse of write_embeddings. Round-trip-stable for the TSV format."""
-    if format == "tsv":
-        return _read_tsv(path)
-    raise ValueError(f"unsupported format: {format!r}")
+    if format != TSV:
+        raise ValueError(f"unsupported format: {format!r}")
+    df = pd.read_csv(path, sep="\t", index_col=0)
+    return Embedding(
+        matrix=df.to_numpy(dtype=np.float64),
+        row_ids=list(df.index),
+        col_names=list(df.columns),
+    )
 
 
 @dataclass
@@ -89,8 +70,8 @@ def _write_h5_graph(path, graph):
         )
 
 
-def write_graph(obj, path, format="h5"):
-    if format == "h5":
+def write_graph(obj, path, format=H5):
+    if format == H5:
         _write_h5_graph(path, obj)
     else:
         raise ValueError(f"unsupported format: {format!r}")
@@ -103,9 +84,9 @@ def _read_h5_sparse(g):
     )
 
 
-def read_graph(path, format="h5"):
+def read_graph(path, format=H5):
     """Inverse of write_graph. Round-trip-stable for the HDF5 format."""
-    if format != "h5":
+    if format != H5:
         raise ValueError(f"unsupported format: {format!r}")
     with h5py.File(path, "r") as h5:
         return NeighborGraph(
@@ -122,39 +103,21 @@ class Labels:
     col_name: str = "cluster"
 
 
-def _write_labels_tsv(path, labels):
-    with open(path, "w", encoding="utf-8", newline="") as f:
-        w = csv.writer(f, delimiter="\t", lineterminator="\n")
-        w.writerow([labels.col_name])
-        for cid, val in zip(labels.row_ids, labels.values):
-            w.writerow([cid, val])
-
-
-def write_labels(obj, path, format="tsv"):
-    if format == "tsv":
-        _write_labels_tsv(path, obj)
-    else:
+def write_labels(obj, path, format=TSV):
+    if format != TSV:
         raise ValueError(f"unsupported format: {format!r}")
-
-
-def _read_labels_tsv(path):
-    row_ids = []
-    values = []
-    with open(path, encoding="utf-8") as f:
-        reader = csv.reader(f, delimiter="\t")
-        col_name = next(reader)[0]
-        for row in reader:
-            row_ids.append(row[0])
-            values.append(row[1])
-    return Labels(
-        values=np.array(values, dtype=object),
-        row_ids=row_ids,
-        col_name=col_name,
+    pd.Series(obj.values, index=obj.row_ids, name=obj.col_name).to_csv(
+        path, sep="\t"
     )
 
 
-def read_labels(path, format="tsv"):
+def read_labels(path, format=TSV):
     """Inverse of write_labels. Round-trip-stable for the TSV format."""
-    if format == "tsv":
-        return _read_labels_tsv(path)
-    raise ValueError(f"unsupported format: {format!r}")
+    if format != TSV:
+        raise ValueError(f"unsupported format: {format!r}")
+    s = pd.read_csv(path, sep="\t", index_col=0, header=0).squeeze()
+    return Labels(
+        values=s.to_numpy(dtype=object),
+        row_ids=list(s.index),
+        col_name=s.name,
+    )
