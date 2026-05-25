@@ -21,8 +21,13 @@ Implementation notes
   (rsc does not expose HDBSCAN as a tl function). Requires ``--min_samples``
   and ``--min_cluster_size``. Noise points receive label -1 and are preserved
   as-is in the output; downstream metric stages must handle them.
-  ``--random_seed`` is accepted for CLI uniformity but ignored (HDBSCAN is
-  deterministic).
+  HDBSCAN has no seed parameter; passing ``--random_seed`` is rejected to
+  avoid the false impression that the run is seed-controlled.
+- ``rapids-dbscan`` uses ``cuml.cluster.DBSCAN`` directly on obsm["X_pca"].
+  Requires ``--eps`` (neighborhood radius) and ``--min_samples`` (min points
+  per core neighborhood). Noise points receive label -1, same convention as
+  HDBSCAN. DBSCAN has no seed parameter; passing ``--random_seed`` is
+  rejected.
 """
 
 import sys
@@ -60,6 +65,13 @@ def run_cluster(adata, opts: ClusterEmbeddingOptions):
         )
         labels = model.fit_predict(adata.obsm["X_pca"])
         adata.obs["cluster"] = cp.asnumpy(labels).astype(str)
+    elif opts.method == "rapids-dbscan":
+        model = cuml.cluster.DBSCAN(
+            eps=opts.eps,
+            min_samples=opts.min_samples,
+        )
+        labels = model.fit_predict(adata.obsm["X_pca"])
+        adata.obs["cluster"] = cp.asnumpy(labels).astype(str)
     else:
         raise ValueError(f"unknown method: {opts.method!r}")
 
@@ -68,7 +80,7 @@ def main():
     args = build_cluster_embedding_parser().parse_args()
     print(f"Full command: {' '.join(sys.argv)}")
     for k in ("output_dir", "name", "pcas_tsv", "method",
-              "n_clusters", "min_samples", "min_cluster_size", "random_seed"):
+              "n_clusters", "min_samples", "min_cluster_size", "eps", "random_seed"):
         print(f"  {k}: {getattr(args, k)}")
 
     opts = build_cluster_embedding_opts(args)
