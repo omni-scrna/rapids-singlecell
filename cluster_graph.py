@@ -24,9 +24,9 @@ Implementation notes
   AnnData a well-formed obs axis; the actual computation runs on
   ``obsp["connectivities"]``. ``obsp["distances"]`` is loaded for
   round-trip fidelity but unused by the graph algorithms.
-- ``random_seed`` is honored by leiden. Louvain in rsc has no seed parameter
-  and is non-deterministic; ``--random_seed`` is accepted for CLI uniformity
-  but ignored.
+- ``random_seed`` is required for leiden. Louvain in rsc has no seed parameter
+  and is non-deterministic; passing ``--random_seed`` for rapids-louvain is
+  rejected to avoid the false impression that the run is seed-controlled.
 """
 
 import sys
@@ -40,7 +40,7 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from cli import build_cluster_parser  # noqa: E402
 from gpu import setup_gpu  # noqa: E402
 from loaders import graph_to_adata  # noqa: E402
-from options import ClusterOptions  # noqa: E402
+from options import ClusterOptions, build_cluster_opts  # noqa: E402
 from phases import phase  # noqa: E402
 from writers import Labels, read_graph, write_labels  # noqa: E402
 
@@ -76,11 +76,7 @@ def main():
     for k in ("output_dir", "name", "knn_h5", "method", "resolution", "random_seed"):
         print(f"  {k}: {getattr(args, k)}")
 
-    opts = ClusterOptions(
-        method=args.method,
-        resolution=args.resolution,
-        random_seed=args.random_seed,
-    )
+    opts = build_cluster_opts(args)
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     init_logger(args.output_dir)
