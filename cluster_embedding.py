@@ -26,9 +26,7 @@ Implementation notes
 """
 
 import sys
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import cuml.cluster
 import cupy as cp
@@ -40,34 +38,9 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from cli import build_cluster_embedding_parser  # noqa: E402
 from gpu import setup_gpu  # noqa: E402
 from loaders import embedding_to_adata  # noqa: E402
+from options import ClusterEmbeddingOptions, build_cluster_embedding_opts  # noqa: E402
 from phases import phase  # noqa: E402
 from writers import Labels, read_embeddings, write_labels  # noqa: E402
-
-
-@dataclass
-class ClusterEmbeddingOptions:
-    method: str
-    random_seed: int
-    n_clusters: Optional[int] = None
-    min_samples: Optional[int] = None
-    min_cluster_size: Optional[int] = None
-
-
-def _build_opts(args) -> ClusterEmbeddingOptions:
-    if args.method == "rapids-kmeans" and args.n_clusters is None:
-        raise ValueError("--n_clusters is required for rapids-kmeans")
-    if args.method == "rapids-hdbscan":
-        if args.min_samples is None:
-            raise ValueError("--min_samples is required for rapids-hdbscan")
-        if args.min_cluster_size is None:
-            raise ValueError("--min_cluster_size is required for rapids-hdbscan")
-    return ClusterEmbeddingOptions(
-        method=args.method,
-        random_seed=args.random_seed,
-        n_clusters=args.n_clusters,
-        min_samples=args.min_samples,
-        min_cluster_size=args.min_cluster_size,
-    )
 
 
 def run_cluster(adata, opts: ClusterEmbeddingOptions):
@@ -98,7 +71,7 @@ def main():
               "n_clusters", "min_samples", "min_cluster_size", "random_seed"):
         print(f"  {k}: {getattr(args, k)}")
 
-    opts = _build_opts(args)
+    opts = build_cluster_embedding_opts(args)
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     init_logger(args.output_dir)
