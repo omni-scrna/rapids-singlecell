@@ -34,15 +34,10 @@ kNN flavor tokens (ANN search backend axis):
 Cluster method tokens (algorithm axis):
     rapids-leiden        -> rsc.tl.leiden     (graph community detection)
     rapids-louvain       -> rsc.tl.louvain    (graph community detection)
-    # future, on PCA embedding rather than graph:
-    rapids-kmeans        -> cuml.cluster.KMeans
+    # on PCA embedding rather than graph (see build_cluster_embedding_parser):
+    rapids-kmeans        -> cuml.cluster.KMeans (via rsc.tl.kmeans)
     rapids-hdbscan       -> cuml.cluster.HDBSCAN
     rapids-dbscan        -> cuml.cluster.DBSCAN
-
-Note: the embedding-based cluster methods would need ``--pcas.tsv`` as
-input rather than ``--knn.h5``. When/if they're added, splitting into a
-separate ``cluster_embedding`` entrypoint is cleaner than carrying both
-inputs in this one.
 
 The scanpy module uses the same pattern (``arpack`` / ``randomized`` for
 PCA; ``umap`` / ``gauss`` for kNN).
@@ -106,8 +101,9 @@ def build_cluster_parser():
                         help="Clustering method token (see module docstring)")
     parser.add_argument("--resolution", type=float, required=True,
                         help="Resolution parameter (higher -> more, smaller clusters)")
-    parser.add_argument("--random_seed", type=int, required=True,
-                        help="Random seed")
+    parser.add_argument("--random_seed", type=int, default=None,
+                        help="Random seed (required for rapids-leiden; "
+                             "rejected for rapids-louvain, which has no seed)")
 
     return parser
 
@@ -119,15 +115,19 @@ def build_cluster_embedding_parser():
     parser.add_argument("--pcas.tsv", dest="pcas_tsv", type=str, required=True,
                         help="PCA TSV produced by the pca entrypoint")
     parser.add_argument("--method", type=str, required=True,
-                        choices=["rapids-kmeans", "rapids-hdbscan"],
+                        choices=["rapids-kmeans", "rapids-hdbscan", "rapids-dbscan"],
                         help="Clustering method token (see module docstring)")
     parser.add_argument("--n_clusters", type=int, default=None,
                         help="Number of clusters; required for rapids-kmeans")
     parser.add_argument("--min_samples", type=int, default=None,
-                        help="Min samples per core point; required for rapids-hdbscan")
+                        help="Min samples per core point; required for rapids-hdbscan and rapids-dbscan")
     parser.add_argument("--min_cluster_size", type=int, default=None,
                         help="Min cluster size; required for rapids-hdbscan")
-    parser.add_argument("--random_seed", type=int, required=True,
-                        help="Random seed (used by rapids-kmeans; ignored by rapids-hdbscan)")
+    parser.add_argument("--eps", type=float, default=None,
+                        help="Neighborhood radius; required for rapids-dbscan")
+    parser.add_argument("--random_seed", type=int, default=None,
+                        help="Random seed (required for rapids-kmeans; "
+                             "rejected for rapids-hdbscan and rapids-dbscan, "
+                             "which have no seed)")
 
     return parser

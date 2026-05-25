@@ -6,15 +6,17 @@ from writers import read_graph, read_labels
 
 
 def _run(monkeypatch, tmp_path, knn_h5, method, resolution=0.5, seed=42):
-    monkeypatch.setattr(sys, "argv", [
+    argv = [
         "cluster_graph.py",
         "--knn.h5", str(knn_h5),
         "--method", method,
         "--resolution", str(resolution),
-        "--random_seed", str(seed),
         "--output_dir", str(tmp_path),
         "--name", "test",
-    ])
+    ]
+    if method == "rapids-leiden":
+        argv += ["--random_seed", str(seed)]
+    monkeypatch.setattr(sys, "argv", argv)
     from cluster_graph import main
     main()
     return tmp_path / "test_clusters.tsv"
@@ -37,6 +39,21 @@ def test_leiden(monkeypatch, tmp_path, knn_h5):
 def test_louvain(monkeypatch, tmp_path, knn_h5):
     out = _run(monkeypatch, tmp_path, knn_h5, "rapids-louvain")
     _check(out, knn_h5)
+
+
+def test_louvain_rejects_seed(monkeypatch, tmp_path, knn_h5):
+    monkeypatch.setattr(sys, "argv", [
+        "cluster_graph.py",
+        "--knn.h5", str(knn_h5),
+        "--method", "rapids-louvain",
+        "--resolution", "0.5",
+        "--random_seed", "42",
+        "--output_dir", str(tmp_path),
+        "--name", "test",
+    ])
+    from cluster_graph import main
+    with pytest.raises(ValueError, match="--random_seed is not accepted"):
+        main()
 
 
 def test_leiden_resolution_affects_n_clusters(monkeypatch, tmp_path, knn_h5):
