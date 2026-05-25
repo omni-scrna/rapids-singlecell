@@ -30,7 +30,6 @@ Implementation notes
 """
 
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -41,15 +40,9 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from cli import build_cluster_parser  # noqa: E402
 from gpu import setup_gpu  # noqa: E402
 from loaders import graph_to_adata  # noqa: E402
+from options import ClusterOptions  # noqa: E402
 from phases import phase  # noqa: E402
 from writers import Labels, read_graph, write_labels  # noqa: E402
-
-
-@dataclass
-class ClusterOptions:
-    method: str
-    resolution: float
-    random_seed: int
 
 
 def run_cluster(adata, opts: ClusterOptions):
