@@ -19,11 +19,11 @@ Implementation notes
   alternative scaling is needed later, expose it as a new --pca_type variant
   rather than as an independent flag (see src/cli.py for the rapids-* solver-
   token convention).
-- ``--solver`` is a single opaque token ``rapids`` here. cuML's internal
-  svd_solver knob (auto/full/jacobi) is left at its default. To compare
-  cuML algorithms head-to-head, add new solver tokens (rapids-jacobi,
-  rapids-full, rapids-truncated) in src/cli.py — do not expose svd_solver
-  as a free-form flag.
+- ``--solver`` is an opaque token mapped to cuML's svd_solver knob via
+  SOLVER_TO_SVD below: ``rapids`` -> default (auto), ``rapids-exact`` ->
+  "full". To compare more cuML algorithms head-to-head, add new tokens
+  (rapids-jacobi, rapids-truncated, ...) to SOLVER_TO_SVD and to
+  src/cli.py's choices — do not expose svd_solver as a free-form flag.
 - RMM is reinitialized with a non-managed, non-pooled allocator. This makes
   GPU memory accounting predictable for benchmark runs (a pool allocator
   would mask the true working-set cost).
@@ -44,14 +44,23 @@ from phases import phase  # noqa: E402
 from writers import Embedding, write_embeddings  # noqa: E402
 
 
+SOLVER_TO_SVD = {
+    "rapids":       None,    # cuML default (auto)
+    "rapids-exact": "full",  # deterministic full SVD on GPU
+}
+
+
 def run_pca(adata, args):
     """GPU-only PCA. Pre/post: adata stays on GPU. Mutates in place."""
-    rsc.pp.pca(
-        adata,
-        n_comps=args.n_components,
-        zero_center=True,
-        random_state=args.random_seed,
-    )
+    kwargs = {
+        "n_comps": args.n_components,
+        "zero_center": True,
+        "random_state": args.random_seed,
+    }
+    svd = SOLVER_TO_SVD[args.solver]
+    if svd is not None:
+        kwargs["svd_solver"] = svd
+    rsc.pp.pca(adata, **kwargs)
 
 
 def main():

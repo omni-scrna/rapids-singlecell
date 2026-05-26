@@ -20,7 +20,8 @@ tokens rather than exposing sub-knob flags.
 
 PCA solver tokens (cuML's ``svd_solver`` axis):
     rapids               -> cuML default (auto), zero-centered
-    rapids-full          -> svd_solver="full"
+    rapids-exact         -> svd_solver="full" (deterministic, seed is a no-op);
+                            parallels scrapper/seurat ``exact``
     rapids-jacobi        -> svd_solver="jacobi"
     rapids-truncated     -> sparse truncated SVD path (zero_center=False)
 
@@ -67,7 +68,7 @@ def build_pca_parser():
                         help="TENx-format HDF5 of normalized, selected expression (genes x cells)")
 
     parser.add_argument("--solver", type=str, required=True,
-                        choices=["rapids"],
+                        choices=["rapids", "rapids-exact"],
                         help="PCA solver token (see module docstring for the rapids-* extension scheme)")
     parser.add_argument("--n_components", type=int, required=True,
                         help="Number of principal components to compute")
