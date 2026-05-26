@@ -19,9 +19,14 @@ cuML algorithms head-to-head later, extend ``choices=`` here with new
 tokens rather than exposing sub-knob flags.
 
 PCA solver tokens (cuML's ``svd_solver`` axis):
-    rapids               -> cuML default (auto), zero-centered
+    rapids               -> cuML default (auto), zero-centered. On sparse
+                            zero-centered input rsc routes to covariance_eigh,
+                            which is deterministic — seed is a no-op.
     rapids-exact         -> svd_solver="full" (deterministic, seed is a no-op);
                             parallels scrapper/seurat ``exact``
+    rapids-randomized    -> svd_solver="randomized" (power iteration + Gaussian
+                            sketch); genuinely seed-dependent, parallels
+                            scanpy/randomized and scrapper/random
     rapids-jacobi        -> svd_solver="jacobi"
     rapids-truncated     -> sparse truncated SVD path (zero_center=False)
 
@@ -68,7 +73,7 @@ def build_pca_parser():
                         help="TENx-format HDF5 of normalized, selected expression (genes x cells)")
 
     parser.add_argument("--solver", type=str, required=True,
-                        choices=["rapids", "rapids-exact"],
+                        choices=["rapids", "rapids-exact", "rapids-randomized"],
                         help="PCA solver token (see module docstring for the rapids-* extension scheme)")
     parser.add_argument("--n_components", type=int, required=True,
                         help="Number of principal components to compute")

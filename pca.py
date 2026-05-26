@@ -45,8 +45,13 @@ from writers import Embedding, write_embeddings  # noqa: E402
 
 
 SOLVER_TO_SVD = {
-    "rapids":       None,    # cuML default (auto)
-    "rapids-exact": "full",  # deterministic full SVD on GPU
+    "rapids":            None,         # cuML default (auto); for sparse zero-
+                                       # centered input rsc routes to
+                                       # covariance_eigh — deterministic, so
+                                       # seed is a no-op here
+    "rapids-exact":      "full",       # deterministic full SVD on GPU
+    "rapids-randomized": "randomized", # genuinely seed-dependent (power
+                                       # iteration + Gaussian sketch)
 }
 
 
