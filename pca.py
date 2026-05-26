@@ -96,7 +96,12 @@ def main():
         rsc.get.anndata_to_CPU(adata, convert_all=True)
 
     with phase("write") as attrs:
-        embedding = np.asarray(adata.obsm["X_pca"], dtype=np.float64)
+        # anndata_to_CPU(convert_all=True) leaves obsm["X_pca"] on GPU for the
+        # randomized solver path. Coerce explicitly so np.asarray works.
+        xpca = adata.obsm["X_pca"]
+        if hasattr(xpca, "get"):  # cupy array
+            xpca = xpca.get()
+        embedding = np.asarray(xpca, dtype=np.float64)
         col_names = [f"PC{i + 1}" for i in range(embedding.shape[1])]
         out = Path(args.output_dir) / f"{args.name}_pcas.tsv"
         write_embeddings(Embedding(embedding, list(cell_ids), col_names), out)
