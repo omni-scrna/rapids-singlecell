@@ -20,10 +20,11 @@ identity, not on row order. Both sparse matrices share that ordering.
 
 Implementation notes
 --------------------
-- ``--flavor`` is a single opaque token ``rapids``. rsc.pp.neighbors'
-  internal ANN backend (CAGRA / IVF-Flat / IVF-PQ / brute_force) is left
-  at the cuVS default. Add new tokens (rapids-cagra, rapids-ivf-flat, ...)
-  in src/cli.py to expose the choice — see the docstring there.
+- ``--flavor`` selects the ANN backend / precision. ``rapids`` leaves
+  rsc.pp.neighbors at its cuVS default (currently CAGRA, FP32);
+  ``rapids-cagra-fp16`` casts the embedding to FP16 before indexing.
+  Add new tokens (rapids-ivf-flat, rapids-brute, ...) in src/cli.py to
+  expose other backends — see the docstring there.
 - The synthetic ``X = zeros((n_cells, 1))`` is just a stand-in to give
   AnnData a well-formed obs axis; the actual neighbors computation runs
   on ``obsm["X_pca"]`` (use_rep="X_pca").
@@ -35,6 +36,7 @@ Implementation notes
 import sys
 from pathlib import Path
 
+import cupy as cp
 import rapids_singlecell as rsc
 from obkit.logger import init_logger
 
@@ -47,7 +49,16 @@ from writers import NeighborGraph, read_embeddings, write_graph  # noqa: E402
 
 
 def run_knn(adata, args):
-    """GPU-only neighbors. Pre/post: adata stays on GPU. Mutates in place."""
+    """GPU-only neighbors. Pre/post: adata stays on GPU. Mutates in place.
+
+    Precision: the rsc default path runs in the dtype of ``obsm["X_pca"]``,
+    which arrives as FP32 from the PCA stage. ``rapids-cagra-fp16`` casts
+    that representation to FP16 before indexing — CAGRA accepts FP16
+    datasets natively, so the graph is built end-to-end in half precision.
+    """
+    if args.flavor == "rapids-cagra-fp16":
+        adata.obsm["X_pca"] = adata.obsm["X_pca"].astype(cp.float16)
+
     rsc.pp.neighbors(
         adata,
         n_neighbors=args.n_neighbors,

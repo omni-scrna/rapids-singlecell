@@ -25,8 +25,12 @@ PCA solver tokens (cuML's ``svd_solver`` axis):
     rapids-truncated     -> sparse truncated SVD path (zero_center=False)
 
 kNN flavor tokens (ANN search backend axis):
-    rapids               -> rsc.pp.neighbors default (currently CAGRA)
-    rapids-cagra         -> CAGRA explicitly
+    rapids               -> rsc.pp.neighbors default (currently CAGRA, FP32)
+    rapids-cagra-fp16    -> CAGRA with the embedding cast to FP16 before
+                            indexing (lossy vs FP32; tests precision/speed
+                            trade-off on the same algorithm)
+    # future:
+    rapids-cagra         -> CAGRA explicitly (FP32)
     rapids-ivf-flat      -> IVF-Flat
     rapids-ivf-pq        -> IVF-PQ (lossy, faster on very large data)
     rapids-brute         -> brute-force (reference, slow)
@@ -82,7 +86,7 @@ def build_knn_parser():
     parser.add_argument("--n_neighbors", type=int, required=True,
                         help="Number of nearest neighbors")
     parser.add_argument("--flavor", type=str, required=True,
-                        choices=["rapids"],
+                        choices=["rapids", "rapids-cagra-fp16"],
                         help="kNN flavor token (see module docstring for the rapids-* extension scheme)")
     parser.add_argument("--random_seed", type=int, required=True,
                         help="Random seed")
