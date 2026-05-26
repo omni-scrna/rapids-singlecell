@@ -14,10 +14,11 @@ auto-promotes column 1 to row.names). Values are float64.
 
 Implementation notes
 --------------------
-- Genes are always centered/scaled before PCA (rsc.pp.scale, zero_center=True).
-  Mirrors the scanpy module's invariant. If alternative scaling is needed
-  later, expose it as a new --pca_type variant rather than as an independent
-  flag (see src/cli.py for the rapids-* solver-token convention).
+- Genes are mean-centered (only) before PCA via rsc.pp.pca(zero_center=True).
+  No per-gene variance scaling — mirrors the scanpy/scrapper invariant. If
+  alternative scaling is needed later, expose it as a new --pca_type variant
+  rather than as an independent flag (see src/cli.py for the rapids-* solver-
+  token convention).
 - ``--solver`` is a single opaque token ``rapids`` here. cuML's internal
   svd_solver knob (auto/full/jacobi) is left at its default. To compare
   cuML algorithms head-to-head, add new solver tokens (rapids-jacobi,
@@ -45,7 +46,6 @@ from writers import Embedding, write_embeddings  # noqa: E402
 
 def run_pca(adata, args):
     """GPU-only PCA. Pre/post: adata stays on GPU. Mutates in place."""
-    rsc.pp.scale(adata, zero_center=True, max_value=None)
     rsc.pp.pca(
         adata,
         n_comps=args.n_components,
