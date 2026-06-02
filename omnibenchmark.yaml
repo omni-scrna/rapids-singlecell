@@ -2,7 +2,7 @@
 
 entrypoints:
   pca: pca.py
-  pca-prof: denet pca.py
+  pca-prof: scripts/pca_prof.sh
   knn: knn.py
   knn-prof: denet knn.py
   cluster_graph: cluster_graph.py

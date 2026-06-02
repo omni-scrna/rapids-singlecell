@@ -28,7 +28,7 @@ def write_embeddings(obj, path, format=TSV):
     if format != TSV:
         raise ValueError(f"unsupported format: {format!r}")
     pd.DataFrame(obj.matrix, index=obj.row_ids, columns=_col_names(obj)).to_csv(
-        path, sep="\t"
+        path, sep="\t", index_label="cell_id"
     )
 
 

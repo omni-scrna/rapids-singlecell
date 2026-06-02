@@ -1,6 +1,6 @@
 [workspace]
 authors = ["ben <ben.uzh@proton.me>"]
-channels = ["conda-forge"]
+channels = ["conda-forge", "https://repo.prefix.dev/edge"]
 name = "rapids-singlecell"
 platforms = ["linux-64"]
 version = "0.1.0"
@@ -20,6 +20,11 @@ version = "0.1.0"
 [dependencies]
 python = ">=3.13,<3.14"
 pip = "*"
+# denet 0.7.x: process monitor with NVML-backed VRAM sampling. Pulled from
+# prefix.dev/edge until it lands in conda-forge. Used by the *_prof
+# entrypoints to record host RAM + GPU VRAM in one trace so the sandbox
+# perf plots can sum them.
+denet = "0.7.*"
 
 [pypi-dependencies]
 rapids-singlecell = { version = "==0.14.1", extras = ["rapids13"] }
