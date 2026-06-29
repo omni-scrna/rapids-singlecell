@@ -3,7 +3,7 @@
 
 Input
 -----
-File: ``--pcas.tsv`` produced by the pca entrypoint (cell-id-indexed PC scores).
+File: ``--pcas_tsv`` produced by the pca entrypoint (cell-id-indexed PC scores).
 
 Output
 ------
@@ -30,6 +30,7 @@ Implementation notes
   rejected.
 """
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -39,13 +40,37 @@ import numpy as np
 import rapids_singlecell as rsc
 from obkit.logger import init_logger
 
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-from cli import build_cluster_embedding_parser  # noqa: E402
+sys.path.insert(0, str(Path(__file__).parent / "src"))  # vendored `common` (src/common) + module-local helpers
+from common import cli  # noqa: E402
 from gpu import setup_gpu  # noqa: E402
 from loaders import embedding_to_adata  # noqa: E402
 from options import ClusterEmbeddingOptions, build_cluster_embedding_opts  # noqa: E402
 from phases import phase  # noqa: E402
 from writers import Labels, read_embeddings, write_labels  # noqa: E402
+
+
+def parse_args():
+    # No plan stage covers embedding-based clustering; its input is the same
+    # pcas_tsv artifact the NNG stage consumes, so we borrow that arg contract.
+    # The rapids method params are hand-rolled below (validated in src/options.py).
+    p = argparse.ArgumentParser(description="OmniBenchmark cluster-embedding module (rapids-singlecell)")
+    cli.add_base_args(p)            # --output_dir, --name
+    cli.add_stage_args(p, "NNG")    # --pcas_tsv
+    p.add_argument("--method", type=str, required=True,
+                   choices=["rapids-kmeans", "rapids-hdbscan", "rapids-dbscan"],
+                   help="Clustering method token (see module docstring)")
+    p.add_argument("--n_clusters", type=int, default=None,
+                   help="Number of clusters; required for rapids-kmeans")
+    p.add_argument("--min_samples", type=int, default=None,
+                   help="Min samples per core point; required for rapids-hdbscan and rapids-dbscan")
+    p.add_argument("--min_cluster_size", type=int, default=None,
+                   help="Min cluster size; required for rapids-hdbscan")
+    p.add_argument("--eps", type=float, default=None,
+                   help="Neighborhood radius; required for rapids-dbscan")
+    p.add_argument("--random_seed", type=int, default=None,
+                   help="Random seed (required for rapids-kmeans; rejected for "
+                        "rapids-hdbscan and rapids-dbscan)")
+    return p.parse_args()
 
 
 def run_cluster(adata, opts: ClusterEmbeddingOptions):
@@ -77,7 +102,7 @@ def run_cluster(adata, opts: ClusterEmbeddingOptions):
 
 
 def main():
-    args = build_cluster_embedding_parser().parse_args()
+    args = parse_args()
     print(f"Full command: {' '.join(sys.argv)}")
     for k in ("output_dir", "name", "pcas_tsv", "method",
               "n_clusters", "min_samples", "min_cluster_size", "eps", "random_seed"):
@@ -86,7 +111,7 @@ def main():
     opts = build_cluster_embedding_opts(args)
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    init_logger(args.output_dir)
+    init_logger(str(args.output_dir))
 
     setup_gpu()
 
