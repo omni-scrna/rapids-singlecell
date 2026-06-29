@@ -13,7 +13,7 @@ def _n_cells(normalized_h5):
 def _run(monkeypatch, tmp_path, normalized_h5, n_components=20, seed=42):
     monkeypatch.setattr(sys, "argv", [
         "pca.py",
-        "--normalized_selected.h5", str(normalized_h5),
+        "--normalized_selected_h5", str(normalized_h5),
         "--solver", "rapids",
         "--n_components", str(n_components),
         "--random_seed", str(seed),
@@ -46,3 +46,17 @@ def test_pca_row_ids_match_barcodes(monkeypatch, tmp_path, normalized_h5):
     with h5py.File(normalized_h5) as h5:
         expected = list(h5["matrix"]["barcodes"][:].astype(str))
     assert emb.row_ids == expected
+
+
+def test_pca_loadings_output(monkeypatch, tmp_path, normalized_h5):
+    n_components = 20
+    out = _run(monkeypatch, tmp_path, normalized_h5, n_components=n_components)
+    loadings = out.parent / "test_loadings.tsv"
+    assert loadings.exists()
+    load = read_embeddings(loadings)
+    with h5py.File(normalized_h5) as h5:
+        n_genes = int(h5["matrix"]["shape"][0])
+        gene_ids = list(h5["matrix"]["genes"][:].astype(str))
+    assert load.matrix.shape == (n_genes, n_components)
+    assert load.col_names == [f"PC{i + 1}" for i in range(n_components)]
+    assert load.row_ids == gene_ids
