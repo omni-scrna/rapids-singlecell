@@ -24,12 +24,25 @@ def _col_names(embedding):
     return [f"dim_{i + 1}" for i in range(embedding.matrix.shape[1])]
 
 
+def _write_tsv(path, obj, row_label):
+    # Keep the first column named, as the scanpy module does: left unnamed
+    # (pandas' default), R's read.table(header=TRUE) calls that column "X".
+    pd.DataFrame(obj.matrix, index=obj.row_ids, columns=_col_names(obj)).rename_axis(
+        row_label
+    ).to_csv(path, sep="\t")
+
+
 def write_embeddings(obj, path, format=TSV):
     if format != TSV:
         raise ValueError(f"unsupported format: {format!r}")
-    pd.DataFrame(obj.matrix, index=obj.row_ids, columns=_col_names(obj)).to_csv(
-        path, sep="\t"
-    )
+    _write_tsv(path, obj, "cell_id")
+
+
+def write_loadings(obj, path, format=TSV):
+    """Embedding layout, but rows are genes: first column is gene_id."""
+    if format != TSV:
+        raise ValueError(f"unsupported format: {format!r}")
+    _write_tsv(path, obj, "gene_id")
 
 
 def read_embeddings(path, format=TSV):
@@ -106,9 +119,9 @@ class Labels:
 def write_labels(obj, path, format=TSV):
     if format != TSV:
         raise ValueError(f"unsupported format: {format!r}")
-    pd.Series(obj.values, index=obj.row_ids, name=obj.col_name).to_csv(
-        path, sep="\t"
-    )
+    pd.Series(obj.values, index=obj.row_ids, name=obj.col_name).rename_axis(
+        "cell_id"
+    ).to_csv(path, sep="\t")
 
 
 def read_labels(path, format=TSV):

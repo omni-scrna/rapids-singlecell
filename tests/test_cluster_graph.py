@@ -29,6 +29,7 @@ def _check(out, knn_h5):
     assert labels.col_name == "cluster"
     assert labels.row_ids == graph.row_ids
     assert len(set(labels.values)) > 1
+    assert out.read_text().splitlines()[0].split("\t") == ["cell_id", "cluster"]
 
 
 def test_leiden(monkeypatch, tmp_path, knn_h5):

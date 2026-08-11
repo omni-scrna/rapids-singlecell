@@ -4,7 +4,7 @@
 Input
 -----
 File: ``--pcas_tsv`` produced by the pca entrypoint of this module
-(or any module that emits the same TSV format: header = PC names,
+(or any module that emits the same TSV format: header = cell_id + PC names,
 each data row prefixed by cell barcode).
 
 Output
