@@ -39,11 +39,19 @@ def load_matrix(h5_path):
 
 
 def embedding_to_adata(embedding):
-    """Wrap an Embedding in a host AnnData with the matrix in obsm["X_pca"]."""
+    """Wrap an Embedding in a host AnnData with the matrix in obsm["X_pca"].
+
+    ascontiguousarray is load-bearing, not defensive: read_embeddings builds the
+    matrix via pandas .to_numpy(), which is F-contiguous, and the RAPIDS
+    consumers of obsm["X_pca"] read the raw buffer as if it were C-ordered.
+    cuML 26.06 HDBSCAN on F-ordered input silently labels every cell noise
+    (0 clusters) instead of erroring, so hand the GPU stack C order here — this
+    is the one place every GPU consumer of an embedding routes through.
+    """
     n = len(embedding.row_ids)
     adata = ad.AnnData(X=np.zeros((n, 1), dtype=np.float32))
     adata.obs_names = embedding.row_ids
-    adata.obsm["X_pca"] = embedding.matrix.astype(np.float32)
+    adata.obsm["X_pca"] = np.ascontiguousarray(embedding.matrix, dtype=np.float32)
     return adata
 
 
