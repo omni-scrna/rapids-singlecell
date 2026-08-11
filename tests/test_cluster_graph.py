@@ -8,7 +8,7 @@ from writers import read_graph, read_labels
 def _run(monkeypatch, tmp_path, knn_h5, method, resolution=0.5, seed=42):
     argv = [
         "cluster_graph.py",
-        "--knn.h5", str(knn_h5),
+        "--neighbors_h5", str(knn_h5),
         "--method", method,
         "--resolution", str(resolution),
         "--output_dir", str(tmp_path),
@@ -29,6 +29,7 @@ def _check(out, knn_h5):
     assert labels.col_name == "cluster"
     assert labels.row_ids == graph.row_ids
     assert len(set(labels.values)) > 1
+    assert out.read_text().splitlines()[0].split("\t") == ["cell_id", "cluster"]
 
 
 def test_leiden(monkeypatch, tmp_path, knn_h5):
@@ -44,7 +45,7 @@ def test_louvain(monkeypatch, tmp_path, knn_h5):
 def test_louvain_rejects_seed(monkeypatch, tmp_path, knn_h5):
     monkeypatch.setattr(sys, "argv", [
         "cluster_graph.py",
-        "--knn.h5", str(knn_h5),
+        "--neighbors_h5", str(knn_h5),
         "--method", "rapids-louvain",
         "--resolution", "0.5",
         "--random_seed", "42",
