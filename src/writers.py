@@ -119,9 +119,9 @@ class Labels:
 def write_labels(obj, path, format=TSV):
     if format != TSV:
         raise ValueError(f"unsupported format: {format!r}")
-    pd.Series(obj.values, index=obj.row_ids, name=obj.col_name).to_csv(
-        path, sep="\t"
-    )
+    pd.Series(obj.values, index=obj.row_ids, name=obj.col_name).rename_axis(
+        "cell_id"
+    ).to_csv(path, sep="\t")
 
 
 def read_labels(path, format=TSV):
