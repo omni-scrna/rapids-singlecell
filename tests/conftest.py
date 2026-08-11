@@ -17,7 +17,7 @@ def pcas_tsv():
 
 @pytest.fixture(scope="session")
 def knn_h5():
-    return DATA / "datasets_knn.h5"
+    return DATA / "datasets_neighbors.h5"
 
 
 @pytest.fixture(scope="session")
