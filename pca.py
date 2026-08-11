@@ -14,10 +14,11 @@ row.names. Values are float64.
 
 Implementation notes
 --------------------
-- Genes are always centered/scaled before PCA (rsc.pp.scale, zero_center=True).
-  Mirrors the scanpy module's invariant. If alternative scaling is needed
-  later, expose it as a new --pca_type variant rather than as an independent
-  flag (rapids-* solver-token convention — see --solver below).
+- Genes are centered but NOT scaled to unit variance: centering is done by
+  rsc.pp.pca(zero_center=True) itself, so there is no rsc.pp.scale step. If
+  unit-variance scaling is needed later, expose it as a new --solver token
+  rather than as an independent flag (rapids-* solver-token convention —
+  see --solver below).
 - ``--solver`` is a single opaque token ``rapids`` here. cuML's internal
   svd_solver knob (auto/full/jacobi) is left at its default. To compare
   cuML algorithms head-to-head, add new solver tokens (rapids-jacobi,
@@ -61,8 +62,13 @@ def parse_args():
 
 
 def run_pca(adata, args):
-    """GPU-only PCA. Pre/post: adata stays on GPU. Mutates in place."""
-    rsc.pp.scale(adata, zero_center=True, max_value=None)
+    """GPU-only PCA. Pre/post: adata stays on GPU. Mutates in place.
+
+    Center-only: zero_center=True centers the genes; no unit-variance scaling.
+    """
+    # cuML dispatches on the container type/dtype of X (sparse vs dense picks a
+    # different solver path), so log what the solver actually got.
+    print(f"  X: {type(adata.X).__name__} dtype={adata.X.dtype} shape={adata.X.shape}")
     rsc.pp.pca(
         adata,
         n_comps=args.n_components,
