@@ -14,7 +14,7 @@ def _run(monkeypatch, tmp_path, normalized_h5, n_components=20, seed=42):
     monkeypatch.setattr(sys, "argv", [
         "pca.py",
         "--normalized_selected_h5", str(normalized_h5),
-        "--solver", "rapids",
+        "--solver", "rapids-covariance-eigh",
         "--n_components", str(n_components),
         "--random_seed", str(seed),
         "--output_dir", str(tmp_path),
