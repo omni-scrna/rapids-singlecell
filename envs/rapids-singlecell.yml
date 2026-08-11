@@ -8,4 +8,6 @@ dependencies:
 - pip *
 - pip
 - pip:
-  - rapids-singlecell[rapids13]==0.14.1
+  - rapids-singlecell-cu13[rapids]==0.16.1
+  - obkit>=0.0.3, <0.0.4
+  - pytest>=8

@@ -6,23 +6,29 @@ platforms = ["linux-64"]
 version = "0.1.0"
 
 # rapids-singlecell is published on PyPI (not on the rapidsai conda channel).
-# NVIDIA's rapids13 PyPI wheels bundle their own CUDA 13 runtime via
-# `cuda-toolkit==13.*`, so we don't need the rapidsai conda channel nor an
-# explicit `cuda-version` pin here. The host driver must support CUDA 13.
+# NVIDIA's RAPIDS PyPI wheels bundle their own CUDA 13 runtime, so we don't need
+# the rapidsai conda channel nor an explicit `cuda-version` pin here. The host
+# driver must support CUDA 13.
 #
-# We pin to 0.14.1 (pure-Python wheel, py3-none-any) instead of 0.15.x because
-# 0.15 added native CUDA C++ extensions and currently ships sdist-only on PyPI,
-# which forces a from-source build that requires a matching CUDA 13 nvcc on
-# PATH. Bump to 0.15.x once upstream publishes binary wheels.
+# Since 0.15 the project ships native CUDA C++ extensions, and the plain
+# `rapids-singlecell` dist is sdist-only — installing it forces a from-source
+# build needing CUDA 13 nvcc + cmake + nanobind. Upstream publishes the built
+# artifacts under CUDA-suffixed names instead, so we take `rapids-singlecell-cu13`
+# (cp312-abi3 manylinux wheel). Its `rapids` extra pulls cudf/cuml/cugraph/cuvs-cu13;
+# the package still imports as `rapids_singlecell`.
 #
-# Python is pinned to 3.13 because 0.14.x metadata caps Python at <3.14.
+# Do not go back to 0.14.1: it imports `check_array` from
+# `cuml.thirdparty_adapters`, which cuML removed by 26.06, so `import
+# rapids_singlecell` fails outright against current cuML.
+#
+# Python is pinned to 3.13; 0.16.x accepts >=3.12,<3.15.
 
 [dependencies]
 python = ">=3.13,<3.14"
 pip = "*"
 
 [pypi-dependencies]
-rapids-singlecell = { version = "==0.14.1", extras = ["rapids13"] }
+rapids-singlecell-cu13 = { version = "==0.16.1", extras = ["rapids"] }
 obkit = ">=0.0.3, <0.0.4"
 pytest = ">=8"
 

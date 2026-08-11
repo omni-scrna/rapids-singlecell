@@ -107,6 +107,7 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/8b/c6/979176efdaa3d239e36d503d5af63a0a773b36662ed8f52e5b6a6d9fd40e/propcache-0.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/8c/7b/1fc1c09cc0756cf25861a3be10565915953876da48bb228fb9a672b20a42/cachetools-7.1.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/8d/a7/998af901511d5efdc6e42fc597d32a69f34eecf86f1591a9d230ab3ab951/nvidia_cuda_crt-13.3.33-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/96/f9/556787b1074269b30402a09ede6368a0366e5682cd97a721fa182acf9073/rapids_singlecell_cu13-0.16.1-cp312-abi3-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/97/be/5699b6e642b372f7d24c59c2f41383e2696825e20bab85f7399c7c6a56f7/nvidia_cuda_runtime-13.3.29-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/9a/8c/29b52f76ee4b4f94d5f1ef05797a83ae48ba8b6d5fcd5691dafb570a5f65/cuda_toolkit-13.3.0-py2.py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/9d/6e/dbf1d0625dc711fb2851f4f3c3055c39ed58bae92082d8c627dbe6013736/aiohttp-3.14.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
@@ -123,7 +124,6 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/b0/73/6e1b01cbeb458807aa0831742232dbdd1fa92bfa33f52a3f176b4ff3dc11/multidict-6.7.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/b0/bb/bf3acb67d4f248ab9a6a9a23c7e70a9649971479f5b8c7cef3321426183d/libcugraph_cu13-26.6.0.tar.gz
       - pypi: https://files.pythonhosted.org/packages/b1/c0/4a5bb7897918de7c7e0191d9342df8ae4cb797ff07276e0f20d13e497ce7/nvtx-0.2.15-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
-      - pypi: https://files.pythonhosted.org/packages/b1/f1/9efb1a2c0436618a1f4cc96a04ea215191ca23484ca85e6228b05815b63d/rapids_singlecell-0.14.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b2/e6/94145d714402fd5ade00b5661f2d0ab981219e07f7db9bfa16786cdb9c04/pynndescent-0.6.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl
@@ -1780,6 +1780,57 @@ packages:
   version: 13.3.33
   sha256: 01ff37600c7b880a14cab4ade763b4c10c0ff92f25cc9dca30f0881ce52693c4
   requires_python: '>=3'
+- pypi: https://files.pythonhosted.org/packages/96/f9/556787b1074269b30402a09ede6368a0366e5682cd97a721fa182acf9073/rapids_singlecell_cu13-0.16.1-cp312-abi3-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
+  name: rapids-singlecell-cu13
+  version: 0.16.1
+  sha256: c69cd968a399124932b6bfa7ace1c1cec8373e938e4812435f468ce933d44e75
+  requires_dist:
+  - anndata>=0.10.0
+  - docrep
+  - matplotlib>=3.4
+  - natsort
+  - numpy>=1.17.0
+  - pandas
+  - scanpy>=1.10.0
+  - scikit-image
+  - scikit-learn
+  - scikit-misc>=0.1.3
+  - scipy>=1.4
+  - statsmodels>=0.12.0
+  - tqdm
+  - hatch-vcs ; extra == 'dev'
+  - pre-commit ; extra == 'dev'
+  - dask ; extra == 'doc'
+  - myst-nb ; extra == 'doc'
+  - nbsphinx>=0.8.12 ; extra == 'doc'
+  - pytest ; extra == 'doc'
+  - scanpydoc[theme,typehints]>=0.9.4 ; extra == 'doc'
+  - sphinx-copybutton ; extra == 'doc'
+  - sphinx-design ; extra == 'doc'
+  - sphinx-tabs ; extra == 'doc'
+  - sphinx>=4.5.0 ; extra == 'doc'
+  - sphinxcontrib-bibtex ; extra == 'doc'
+  - sphinxext-opengraph ; extra == 'doc'
+  - cudf-cu13>=25.12 ; extra == 'rapids'
+  - cugraph-cu13>=25.12 ; extra == 'rapids'
+  - cuml-cu13>=25.12 ; extra == 'rapids'
+  - cupy-cuda13x[ctk] ; extra == 'rapids'
+  - cuvs-cu13>=25.12 ; extra == 'rapids'
+  - librmm-cu13>=25.12 ; extra == 'rapids'
+  - igraph ; extra == 'test'
+  - rapids-singlecell[test-minimal] ; extra == 'test'
+  - anyio ; extra == 'test-minimal'
+  - bbknn ; extra == 'test-minimal'
+  - decoupler ; extra == 'test-minimal'
+  - fast-array-utils ; extra == 'test-minimal'
+  - pooch ; extra == 'test-minimal'
+  - profimp ; extra == 'test-minimal'
+  - pytest ; extra == 'test-minimal'
+  - pytest-cov ; extra == 'test-minimal'
+  - pytest-rerunfailures ; extra == 'test-minimal'
+  - pytest-timeout ; extra == 'test-minimal'
+  - scanpy>=1.10.0 ; extra == 'test-minimal'
+  requires_python: '>=3.12,<3.15'
 - pypi: https://files.pythonhosted.org/packages/97/be/5699b6e642b372f7d24c59c2f41383e2696825e20bab85f7399c7c6a56f7/nvidia_cuda_runtime-13.3.29-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
   name: nvidia-cuda-runtime
   version: 13.3.29
@@ -2200,71 +2251,6 @@ packages:
   - setuptools ; extra == 'test'
   - sphinx ; extra == 'docs'
   - nvidia-sphinx-theme ; extra == 'docs'
-- pypi: https://files.pythonhosted.org/packages/b1/f1/9efb1a2c0436618a1f4cc96a04ea215191ca23484ca85e6228b05815b63d/rapids_singlecell-0.14.1-py3-none-any.whl
-  name: rapids-singlecell
-  version: 0.14.1
-  sha256: c47114cee6ed9e456ecfe0c40e25fbd945af3b7e2271df3af5272e430be1e9a7
-  requires_dist:
-  - anndata>=0.10.0
-  - docrep
-  - matplotlib>=3.4
-  - natsort
-  - numpy>=1.17.0
-  - pandas
-  - scanpy>=1.10.0
-  - scikit-image
-  - scikit-learn
-  - scikit-misc>=0.1.3
-  - scipy>=1.4
-  - statsmodels>=0.12.0
-  - tqdm
-  - hatch-vcs ; extra == 'dev'
-  - pre-commit ; extra == 'dev'
-  - dask ; extra == 'doc'
-  - myst-nb ; extra == 'doc'
-  - nbsphinx>=0.8.12 ; extra == 'doc'
-  - pytest ; extra == 'doc'
-  - scanpydoc[theme,typehints]>=0.9.4 ; extra == 'doc'
-  - sphinx-copybutton ; extra == 'doc'
-  - sphinx-design ; extra == 'doc'
-  - sphinx-tabs ; extra == 'doc'
-  - sphinx>=4.5.0 ; extra == 'doc'
-  - sphinxcontrib-bibtex ; extra == 'doc'
-  - sphinxext-opengraph ; extra == 'doc'
-  - cudf-cu12>=25.10 ; extra == 'rapids12'
-  - cugraph-cu12>=25.10 ; extra == 'rapids12'
-  - cuml-cu12>=25.10 ; extra == 'rapids12'
-  - cupy-cuda12x ; extra == 'rapids12'
-  - cuvs-cu12>=25.10 ; extra == 'rapids12'
-  - cudf-cu13>=25.10 ; extra == 'rapids13'
-  - cugraph-cu13>=25.10 ; extra == 'rapids13'
-  - cuml-cu13>=25.10 ; extra == 'rapids13'
-  - cupy-cuda13x ; extra == 'rapids13'
-  - cuvs-cu13>=25.10 ; extra == 'rapids13'
-  - anyio ; extra == 'test'
-  - bbknn ; extra == 'test'
-  - decoupler ; extra == 'test'
-  - fast-array-utils ; extra == 'test'
-  - igraph ; extra == 'test'
-  - pooch ; extra == 'test'
-  - profimp ; extra == 'test'
-  - pytest ; extra == 'test'
-  - pytest-cov ; extra == 'test'
-  - pytest-rerunfailures ; extra == 'test'
-  - pytest-timeout ; extra == 'test'
-  - scanpy>=1.10.0 ; extra == 'test'
-  - anyio ; extra == 'test-minimal'
-  - bbknn ; extra == 'test-minimal'
-  - decoupler ; extra == 'test-minimal'
-  - fast-array-utils ; extra == 'test-minimal'
-  - pooch ; extra == 'test-minimal'
-  - profimp ; extra == 'test-minimal'
-  - pytest ; extra == 'test-minimal'
-  - pytest-cov ; extra == 'test-minimal'
-  - pytest-rerunfailures ; extra == 'test-minimal'
-  - pytest-timeout ; extra == 'test-minimal'
-  - scanpy>=1.10.0 ; extra == 'test-minimal'
-  requires_python: '>=3.12,<3.14'
 - pypi: https://files.pythonhosted.org/packages/b2/e6/94145d714402fd5ade00b5661f2d0ab981219e07f7db9bfa16786cdb9c04/pynndescent-0.6.0-py3-none-any.whl
   name: pynndescent
   version: 0.6.0
