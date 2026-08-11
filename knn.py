@@ -50,9 +50,7 @@ from writers import NeighborGraph, read_embeddings, write_graph  # noqa: E402
 
 
 def parse_args():
-    # common/cli injects the shared contract (base args + NNG stage I/O from
-    # common/schema); the rapids method params are hand-rolled below. See the
-    # module docstring for the rapids-* flavor-token extension scheme.
+    # common/cli injects the synced contract; method params are hand-rolled.
     p = argparse.ArgumentParser(description="OmniBenchmark kNN module (rapids-singlecell)")
     cli.add_base_args(p)            # --output_dir, --name
     cli.add_stage_args(p, "NNG")    # --pcas_tsv
@@ -60,7 +58,7 @@ def parse_args():
                    help="Number of nearest neighbors")
     p.add_argument("--flavor", type=str, required=True,
                    choices=["rapids", "rapids-cagra-fp16"],
-                   help="kNN flavor token (see module docstring for the rapids-* extension scheme)")
+                   help="kNN flavor token (see module docstring)")
     p.add_argument("--random_seed", type=int, required=True, help="Random seed")
     return p.parse_args()
 

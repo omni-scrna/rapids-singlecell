@@ -61,11 +61,7 @@ def test_pca_loadings_output(monkeypatch, tmp_path, normalized_h5):
     assert load.col_names == [f"PC{i + 1}" for i in range(n_components)]
     assert load.row_ids == gene_ids
 
-
-def test_tsv_first_column_is_named(monkeypatch, tmp_path, normalized_h5):
-    # scanpy-module layout; unnamed, R's read.table(header=TRUE) calls it "X".
-    out = _run(monkeypatch, tmp_path, normalized_h5, n_components=5)
-    for path, label in ((out, "cell_id"), (out.parent / "test_loadings.tsv", "gene_id")):
-        header, first_row = path.read_text().splitlines()[:2]
-        assert header.split("\t") == [label] + [f"PC{i + 1}" for i in range(5)]
-        assert len(first_row.split("\t")) == 6
+    # Named first column (scanpy layout); unnamed, R's read.table calls it "X".
+    pcs = [f"PC{i + 1}" for i in range(n_components)]
+    assert out.read_text().splitlines()[0].split("\t") == ["cell_id"] + pcs
+    assert loadings.read_text().splitlines()[0].split("\t") == ["gene_id"] + pcs

@@ -50,9 +50,8 @@ from writers import Labels, read_embeddings, write_labels  # noqa: E402
 
 
 def parse_args():
-    # No plan stage covers yet embedding-based clustering; its input is the same
-    # pcas_tsv artifact the NNG stage consumes, so we borrow that arg contract.
-    # The rapids method params are hand-rolled below (validated in src/options.py).
+    # No plan stage covers embedding-based clustering yet, but its input is the
+    # same pcas_tsv the NNG stage consumes, so borrow that arg contract.
     p = argparse.ArgumentParser(description="OmniBenchmark cluster-embedding module (rapids-singlecell)")
     cli.add_base_args(p)            # --output_dir, --name
     cli.add_stage_args(p, "NNG")    # --pcas_tsv

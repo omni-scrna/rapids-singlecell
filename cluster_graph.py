@@ -47,8 +47,7 @@ from writers import Labels, read_graph, write_labels  # noqa: E402
 
 
 def parse_args():
-    # common/cli injects the shared contract (base args + CLUST stage I/O from
-    # common/schema); the rapids method params are hand-rolled below.
+    # common/cli injects the synced contract; method params are hand-rolled.
     p = argparse.ArgumentParser(description="OmniBenchmark cluster module (rapids-singlecell)")
     cli.add_base_args(p)              # --output_dir, --name
     cli.add_stage_args(p, "CLUST")    # --neighbors_h5
@@ -57,8 +56,7 @@ def parse_args():
                    help="Clustering method token (see module docstring)")
     p.add_argument("--resolution", type=float, required=True,
                    help="Resolution parameter (higher -> more, smaller clusters)")
-    # not required here: rejected for rapids-louvain, required for rapids-leiden
-    # (enforced in build_cluster_opts / src/options.py).
+    # not required here; per-method seed rules are enforced in src/options.py
     p.add_argument("--random_seed", type=int, default=None,
                    help="Random seed (required for rapids-leiden; rejected for rapids-louvain)")
     return p.parse_args()

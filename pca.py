@@ -53,14 +53,12 @@ SOLVERS = {
 
 
 def parse_args():
-    # common/cli injects the shared contract (base args + PCA stage I/O from
-    # common/schema); the rapids method params are hand-rolled below. See the
-    # module docstring for the solver-token extension scheme.
+    # common/cli injects the synced contract; method params are hand-rolled.
     p = argparse.ArgumentParser(description="OmniBenchmark PCA module (rapids-singlecell)")
     cli.add_base_args(p)            # --output_dir, --name
     cli.add_stage_args(p, "PCA")    # --normalized_selected_h5
     p.add_argument("--solver", type=str, required=True, choices=sorted(SOLVERS),
-                   help="PCA solver (see module docstring / SOLVERS)")
+                   help="PCA solver (see SOLVERS)")
     p.add_argument("--n_components", type=int, required=True,
                    help="Number of principal components to compute")
     p.add_argument("--random_seed", type=int, required=True,
@@ -75,12 +73,8 @@ def run_pca(adata, args):
     print(f"  X: {type(adata.X).__name__} dtype={adata.X.dtype} "
           f"shape={adata.X.shape} density={density}")
     if density != wants:
-        raise SystemExit(
-            f"--solver {args.solver} (svd_solver={svd_solver!r}) is {wants}-only but X is "
-            f"{density} ({type(adata.X).__name__}); rapids-singlecell would silently "
-            f"run a different solver. Pick a {density} solver token: "
-            + ", ".join(t for t, (_, w) in sorted(SOLVERS.items()) if w == density)
-        )
+        raise SystemExit(f"--solver {args.solver} is {wants}-only but X is {density}; "
+                         "rsc would silently run a different solver")
     rsc.pp.pca(
         adata,
         n_comps=args.n_components,
@@ -123,8 +117,8 @@ def main():
         out = Path(args.output_dir) / f"{args.name}_pcas.tsv"
         write_embeddings(Embedding(embedding, list(cell_ids), col_names), out)
 
-        # Gene loadings; Embedding is just a (matrix, row_ids) holder, and
-        # write_loadings is what stamps the gene_id header.
+        # Embedding is just a (matrix, row_ids) holder; write_loadings is what
+        # stamps the gene_id header.
         loadings = np.asarray(adata.varm["PCs"], dtype=np.float64)
         gene_ids = np.array(adata.var_names)
         loadings_out = Path(args.output_dir) / f"{args.name}_loadings.tsv"
