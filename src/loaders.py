@@ -25,8 +25,14 @@ def load_matrix(h5_path):
     with h5py.File(h5_path, "r") as h5:
         g = h5["matrix"]
         data = g["data"][:]
-        indices = g["indices"][:]
-        indptr = g["indptr"][:]
+        # Cast during the read. On disk these are uint32/int64 and scipy accepts
+        # neither as an index dtype, so reading them raw costs a second full-size
+        # buffer while scipy recasts (~150MB on full pbmc); h5py converts
+        # in-flight instead. scipy picks ONE dtype for both arrays, so they must
+        # agree -- and indptr tops out at nnz, so int32 is only safe under 2**31.
+        idx_dtype = np.int32 if g["data"].shape[0] < 2**31 else np.int64
+        indices = g["indices"].astype(idx_dtype)[:]
+        indptr = g["indptr"].astype(idx_dtype)[:]
         shape = tuple(g["shape"][:])
         gene_ids = g["genes"][:].astype(str)
         cell_ids = g["barcodes"][:].astype(str)
