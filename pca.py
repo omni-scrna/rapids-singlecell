@@ -35,7 +35,7 @@ from obkit.logger import init_logger
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))  # vendored `common` (src/common) + module-local helpers
 from common import cli  # noqa: E402
-from gpu import setup_gpu  # noqa: E402
+from gpu import setup_gpu, to_host  # noqa: E402
 from loaders import load_matrix  # noqa: E402
 from phases import phase  # noqa: E402
 from writers import Embedding, write_embeddings, write_loadings  # noqa: E402
@@ -112,14 +112,14 @@ def main():
         rsc.get.anndata_to_CPU(adata, convert_all=True)
 
     with phase("write") as attrs:
-        embedding = np.asarray(adata.obsm["X_pca"], dtype=np.float64)
+        embedding = np.asarray(to_host(adata.obsm["X_pca"]), dtype=np.float64)
         col_names = [f"PC{i + 1}" for i in range(embedding.shape[1])]
         out = Path(args.output_dir) / f"{args.name}_pcas.tsv"
         write_embeddings(Embedding(embedding, list(cell_ids), col_names), out)
 
         # Embedding is just a (matrix, row_ids) holder; write_loadings is what
         # stamps the gene_id header.
-        loadings = np.asarray(adata.varm["PCs"], dtype=np.float64)
+        loadings = np.asarray(to_host(adata.varm["PCs"]), dtype=np.float64)
         gene_ids = np.array(adata.var_names)
         loadings_out = Path(args.output_dir) / f"{args.name}_loadings.tsv"
         write_loadings(Embedding(loadings, list(gene_ids), col_names), loadings_out)
