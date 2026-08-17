@@ -51,6 +51,12 @@ SOLVERS = {
     "jacobi":           ("jacobi",          "dense"),
 }
 
+# rsc only forwards random_state to these two. covariance_eigh is a deterministic
+# gram+eigh, and the dense path lands in cuml.PCA, which has no random_state at
+# all -- so --random_seed is inert there. Recorded per run so a seed sweep that
+# produced identical replicates is visible in the log instead of inferred.
+SEEDED = {"lanczos", "randomized"}
+
 
 def parse_args():
     # common/cli injects the synced contract; method params are hand-rolled.
@@ -62,7 +68,7 @@ def parse_args():
     p.add_argument("--n_components", type=int, required=True,
                    help="Number of principal components to compute")
     p.add_argument("--random_seed", type=int, required=True,
-                   help="Seed for reproducibility")
+                   help="Seed for reproducibility (only lanczos/randomized-halko consume it)")
     return p.parse_args()
 
 
@@ -75,12 +81,26 @@ def run_pca(adata, args):
     if density != wants:
         raise SystemExit(f"--solver {args.solver} is {wants}-only but X is {density}; "
                          "rsc would silently run a different solver")
+    if svd_solver not in SEEDED:
+        print(f"  WARNING: --solver {args.solver} ignores --random_seed "
+              f"({args.random_seed}); it is deterministic, so a seed sweep "
+              "over it yields identical replicates", file=sys.stderr)
+    # n_iter: rsc defaults to 2 power iterations; sklearn's randomized_svd
+    # resolves n_iter="auto" to 7 for this shape, and that is what the scanpy
+    # module runs. At 2 the trailing PCs carry O(1) error, so the two modules
+    # would not be computing the same method. Pinned for parity.
+    kwargs = {"n_iter": 7} if svd_solver == "randomized" else {}
     rsc.pp.pca(
         adata,
         n_comps=args.n_components,
         zero_center=True,
         svd_solver=svd_solver,
         random_state=args.random_seed,
+        # rsc casts only the embedding, and defaults it to float32 while the
+        # loadings keep the f64 compute dtype. Input and outputs are f64; keep
+        # the embedding there too rather than widening f32 back at write time.
+        dtype="float64",
+        **kwargs,
     )
 
 
@@ -107,6 +127,7 @@ def main():
     with phase("compute") as attrs:
         run_pca(adata, args)
         attrs["n_components"] = args.n_components
+        attrs["seed_used"] = SOLVERS[args.solver][0] in SEEDED
 
     with phase("gpu_download"):
         rsc.get.anndata_to_CPU(adata, convert_all=True)
