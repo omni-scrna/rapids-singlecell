@@ -67,7 +67,11 @@ def read_embeddings(path, format=TSV):
     # this benchmark measures.
     df = pd.read_csv(path, sep="\t", index_col=0, float_precision="round_trip")
     return Embedding(
-        matrix=df.to_numpy(dtype=np.float64),
+        # to_numpy() on a single-dtype frame hands back the internal block
+        # transposed, i.e. F-contiguous. cuml.cluster.HDBSCAN does not copy and
+        # does not complain -- it just labels every point noise. Force C order
+        # here so no GPU consumer downstream has to know that.
+        matrix=np.ascontiguousarray(df.to_numpy(dtype=np.float64)),
         row_ids=list(df.index),
         col_names=list(df.columns),
     )
@@ -150,7 +154,9 @@ def read_labels(path, format=TSV):
     """Inverse of write_labels. Round-trip-stable for the TSV format."""
     if format != TSV:
         raise ValueError(f"unsupported format: {format!r}")
-    s = pd.read_csv(path, sep="\t", index_col=0, header=0).squeeze()
+    # dtype=str or pandas infers int64 for all-numeric labels (kmeans 0..k-1,
+    # hdbscan's -1 noise marker) and the round trip stops being type-stable.
+    s = pd.read_csv(path, sep="\t", index_col=0, header=0, dtype=str).squeeze()
     return Labels(
         values=s.to_numpy(dtype=object),
         row_ids=list(s.index),
