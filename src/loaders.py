@@ -21,7 +21,7 @@ import numpy as np
 import scipy.sparse as sp
 
 
-def load_matrix(h5_path):
+def load_matrix(h5_path, dense=False):
     with h5py.File(h5_path, "r") as h5:
         g = h5["matrix"]
         data = g["data"][:]
@@ -38,6 +38,10 @@ def load_matrix(h5_path):
         cell_ids = g["barcodes"][:].astype(str)
 
     X = sp.csc_matrix((data, indices, indptr), shape=shape).T.tocsr()  # cells x genes
+    if dense:
+        # Drop the sparse copy before AnnData is built so peak reflects one
+        # representation. Required for the dense-only solvers (full, jacobi).
+        X = X.toarray()
     adata = ad.AnnData(X=X)
     adata.obs_names = cell_ids
     adata.var_names = gene_ids

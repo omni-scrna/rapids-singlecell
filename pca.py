@@ -43,12 +43,16 @@ from writers import Embedding, write_embeddings, write_loadings  # noqa: E402
 
 # --solver -> (rsc svd_solver, input density it is valid for). No "auto": the
 # solver is always explicit, so a run is identifiable from its invocation line.
+
+SPARSE = "sparse"
+DENSE = "dense"
+
 SOLVERS = {
-    "covariance-eigh":  ("covariance_eigh", "sparse"),
-    "lanczos":          ("lanczos",         "sparse"),
-    "randomized-halko": ("randomized",      "sparse"),
-    "full":             ("full",            "dense"),
-    "jacobi":           ("jacobi",          "dense"),
+    "covariance-eigh":  ("covariance_eigh", SPARSE),
+    "lanczos":          ("lanczos",         SPARSE),
+    "randomized-halko": ("randomized",      SPARSE),
+    "full":             ("full",            DENSE),
+    "jacobi":           ("jacobi",          DENSE),
 }
 
 # rsc only forwards random_state to these two. covariance_eigh is a deterministic
@@ -67,8 +71,16 @@ def parse_args():
                    help="PCA solver (see SOLVERS)")
     p.add_argument("--n_components", type=int, required=True,
                    help="Number of principal components to compute")
+    # Compute precision. The FEAT matrix arrives float64 (R numeric).
+    # rsc's own dtype default casts only the embedding, not the input.
+    # "input" leaves the matrix untouched.
+    p.add_argument("--dense", type=str, default="false", choices=["true", "false"],
+                   help="materialise the matrix dense before PCA")
+    p.add_argument("--dtype", type=str, default="input",
+                   choices=["input", "float32", "float64"],
+                   help="cast the matrix before PCA (input = leave as read)")
     p.add_argument("--random_seed", type=int, required=True,
-                   help="Seed for reproducibility (only lanczos/randomized-halko consume it)")
+                   help="Seed for reproducibility (only for lanczos/randomized-halko)")
     return p.parse_args()
 
 
@@ -85,10 +97,12 @@ def run_pca(adata, args):
         print(f"  WARNING: --solver {args.solver} ignores --random_seed "
               f"({args.random_seed}); it is deterministic, so a seed sweep "
               "over it yields identical replicates", file=sys.stderr)
-    # n_iter: rsc defaults to 2 power iterations; sklearn's randomized_svd
-    # resolves n_iter="auto" to 7 for this shape, and that is what the scanpy
-    # module runs. At 2 the trailing PCs carry O(1) error, so the two modules
-    # would not be computing the same method. Pinned for parity.
+    # n_iter: rsc defaults to 2 power iterations, which leaves O(1) absolute
+    # error on the trailing PCs (measured against covariance_eigh: 2.4 at
+    # n_iter=2, 0.15 at 7, on values of order 1-3). 7 is what sklearn's
+    # randomized_svd resolves n_iter="auto" to for this shape -- "a good
+    # compromise for PCA" per its own source. 
+    # TODO: expose n_iter as a module parameter.
     kwargs = {"n_iter": 7} if svd_solver == "randomized" else {}
     rsc.pp.pca(
         adata,
@@ -96,10 +110,9 @@ def run_pca(adata, args):
         zero_center=True,
         svd_solver=svd_solver,
         random_state=args.random_seed,
-        # rsc casts only the embedding, and defaults it to float32 while the
-        # loadings keep the f64 compute dtype. Input and outputs are f64; keep
-        # the embedding there too rather than widening f32 back at write time.
-        dtype="float64",
+        # dtype is left at rsc's "float32" default on purpose: it casts only the
+        # embedding, and sc.pp.pca defaults to float32 too, so the scanpy module
+        # emits the same precision. 
         **kwargs,
     )
 
@@ -116,10 +129,13 @@ def main():
     setup_gpu()
 
     with phase("load") as attrs:
-        adata = load_matrix(args.normalized_selected_h5)
+        adata = load_matrix(args.normalized_selected_h5, dense=args.dense == "true")
         cell_ids = np.array(adata.obs_names)
+        if args.dtype != "input":
+            adata.X = adata.X.astype(args.dtype)
         attrs["n_cells"], attrs["n_genes"] = adata.shape
-        print(f"  matrix (cells x genes): {adata.shape}")
+        attrs["dtype"] = str(adata.X.dtype)
+        print(f"  matrix (cells x genes): {adata.shape} dtype={adata.X.dtype}")
 
     with phase("gpu_upload"):
         rsc.get.anndata_to_GPU(adata)
