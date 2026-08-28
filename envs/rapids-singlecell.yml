@@ -6,6 +6,9 @@ channels:
 dependencies:
 - python >=3.13,<3.14
 - pip *
+- polars >=1,<2
 - pip
 - pip:
   - rapids-singlecell[rapids13]==0.14.1
+  - obkit>=0.0.3, <0.0.4
+  - pytest>=8

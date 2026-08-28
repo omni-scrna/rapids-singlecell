@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 import h5py
 import numpy as np
 import pandas as pd
+import polars as pl
 import scipy.sparse as sp
 
 TSV = "tsv"
@@ -25,11 +26,21 @@ def _col_names(embedding):
 
 
 def _write_tsv(path, obj, row_label):
-    # Keep the first column named, as the scanpy module does: left unnamed
-    # (pandas' default), R's read.table(header=TRUE) calls that column "X".
-    pd.DataFrame(obj.matrix, index=obj.row_ids, columns=_col_names(obj)).rename_axis(
-        row_label
-    ).to_csv(path, sep="\t")
+    # Same code as the scanpy module's _write_tsv, deliberately: pandas'
+    # to_csv writes small magnitudes as 3.3e-05 where polars writes
+    # 0.000033, so two modules on different writers emit the same numbers as
+    # different text. Identical writers keep the TSVs diffable across arms.
+    # It is also ~15x faster (0.99s -> 0.06s for 19696 x 50), which is why
+    # this module's `write` phase used to dwarf the CPU module's.
+    #
+    # Keep the first column named: left unnamed (pandas' default),
+    # R's read.table(header=TRUE) calls that column "X".
+    cols = _col_names(obj)
+    df = pl.from_numpy(obj.matrix, schema=cols).insert_column(
+        0, pl.Series("", obj.row_ids))
+    with open(path, "w") as f:
+        f.write(row_label + "\t" + "\t".join(cols) + "\n")
+        df.write_csv(f, separator="\t", include_header=False)
 
 
 def write_embeddings(obj, path, format=TSV):
@@ -49,7 +60,12 @@ def read_embeddings(path, format=TSV):
     """Inverse of write_embeddings. Round-trip-stable for the TSV format."""
     if format != TSV:
         raise ValueError(f"unsupported format: {format!r}")
-    df = pd.read_csv(path, sep="\t", index_col=0)
+    # float_precision="round_trip": the default parser is off by 1-2 ULP on
+    # ~0.6% of values, and knn.py reads its embedding through here while the
+    # scanpy module reads the same file with polars (which is exact). Two arms
+    # disagreeing on the last bit of the input is precisely the size of effect
+    # this benchmark measures.
+    df = pd.read_csv(path, sep="\t", index_col=0, float_precision="round_trip")
     return Embedding(
         matrix=df.to_numpy(dtype=np.float64),
         row_ids=list(df.index),
