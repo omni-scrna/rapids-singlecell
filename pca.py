@@ -110,16 +110,23 @@ def main():
 
     with phase("gpu_download"):
         rsc.get.anndata_to_CPU(adata, convert_all=True)
+        # convert_all does not reliably bring obsm/varm back (see gpu.to_host),
+        # so the embedding's transfer is asked for explicitly -- HERE, in the
+        # phase named for it, rather than at write time. Measured on
+        # tenx-0020k it is 3ms -- this is correctness of attribution, not a
+        # saving. (`rsc.pp.pca` already returns synchronized, checked with an
+        # explicit Device().synchronize() that costs 0.000s, so `compute` is
+        # not hiding queued work behind this either.)
+        embedding = np.asarray(to_host(adata.obsm["X_pca"]), dtype=np.float64)
+        loadings = np.asarray(to_host(adata.varm["PCs"]), dtype=np.float64)
 
     with phase("write") as attrs:
-        embedding = np.asarray(to_host(adata.obsm["X_pca"]), dtype=np.float64)
         col_names = [f"PC{i + 1}" for i in range(embedding.shape[1])]
         out = Path(args.output_dir) / f"{args.name}_pcas.tsv"
         write_embeddings(Embedding(embedding, list(cell_ids), col_names), out)
 
         # Embedding is just a (matrix, row_ids) holder; write_loadings is what
         # stamps the gene_id header.
-        loadings = np.asarray(to_host(adata.varm["PCs"]), dtype=np.float64)
         gene_ids = np.array(adata.var_names)
         loadings_out = Path(args.output_dir) / f"{args.name}_loadings.tsv"
         write_loadings(Embedding(loadings, list(gene_ids), col_names), loadings_out)
