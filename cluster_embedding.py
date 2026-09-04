@@ -64,8 +64,14 @@ def parse_args():
                    help="Min samples per core point; required for rapids-hdbscan and rapids-dbscan")
     p.add_argument("--min_cluster_size", type=int, default=None,
                    help="Min cluster size; required for rapids-hdbscan")
+    # TODO: eps is an absolute distance in PCA space, so a value is only
+    # meaningful for the dataset and n_components it was chosen against --
+    # too small and every cell is noise, too large and everything is one
+    # cluster. It should be DERIVED per run (k-distance knee at min_samples,
+    # or a quantile of the kNN distances) rather than hard-coded in a plan.
     p.add_argument("--eps", type=float, default=None,
-                   help="Neighborhood radius; required for rapids-dbscan")
+                   help="Neighborhood radius; required for rapids-dbscan. "
+                        "Dataset-dependent: see the TODO above")
     p.add_argument("--random_seed", type=int, default=None,
                    help="Random seed (required for rapids-kmeans; rejected for "
                         "rapids-hdbscan and rapids-dbscan)")

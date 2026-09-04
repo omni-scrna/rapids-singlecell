@@ -79,6 +79,12 @@ def parse_args():
     p.add_argument("--dtype", type=str, default="input",
                    choices=["input", "float32", "float64"],
                    help="cast the matrix before PCA (input = leave as read)")
+    # TODO: this is required for every solver, but SEEDED says only lanczos
+    # and randomized consume it -- covariance-eigh and the dense path ignore
+    # it entirely. The clustering entrypoints REJECT a seed an algorithm
+    # cannot use; PCA only warns. Make the two consistent (reject here too),
+    # which is a breaking change for any plan passing random_seed to an
+    # unseeded solver -- benchmark_conda.yaml does, on covariance-eigh.
     p.add_argument("--random_seed", type=int, required=True,
                    help="Seed for reproducibility (only for lanczos/randomized-halko)")
     return p.parse_args()

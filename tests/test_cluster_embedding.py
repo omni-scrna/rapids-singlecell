@@ -45,10 +45,18 @@ def test_hdbscan(monkeypatch, tmp_path, pcas_tsv):
 
 
 def test_dbscan(monkeypatch, tmp_path, pcas_tsv):
+    # TODO: same dataset-dependence as the --eps TODO in cluster_embedding.py --
+    # this 15 is derived from THIS fixture and silently wrong for any other.
+    # eps has to be picked against the data: 5th-NN distance here runs
+    # 6.5-33.7, median 13.3 (3779 cells, 50 PCs). The old 0.5 was
+    # below the closest pair, so every cell came back noise -- and the assert
+    # below did not catch it, because read_labels used to infer int64 and
+    # `- {"-1"}` never matched the int -1. Hence the string check too.
     out = _run(monkeypatch, tmp_path, pcas_tsv, "rapids-dbscan",
-               extra_args=("--eps", "0.5", "--min_samples", "5"))
+               extra_args=("--eps", "15", "--min_samples", "5"))
     _check(out, pcas_tsv)
     labels = read_labels(out)
+    assert all(isinstance(v, str) for v in labels.values)
     assert len(set(labels.values) - {"-1"}) >= 1
 
 
