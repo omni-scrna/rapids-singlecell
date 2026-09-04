@@ -107,29 +107,25 @@ def write_graph(obj, path, format=H5):
         raise ValueError(f"unsupported format: {format!r}")
 
 
-def _read_h5_sparse(g, n_cells):
-    # `shape` is our own addition; the NNG spec omits it. Both graphs are
-    # square over the cell axis, so cell_ids is the authority either way.
-    shape = tuple(g["shape"][:]) if "shape" in g else (n_cells, n_cells)
+def _read_h5_sparse(grp, n_cells):
+    # No `shape` in the spec: both graphs are square over the cell axis, so
+    # cell_ids is the authority.
     return sp.csr_matrix(
-        (g["data"][:], g["indices"][:], g["indptr"][:]),
-        shape=shape,
+        (grp["data"][:], grp["indices"][:], grp["indptr"][:]),
+        shape=(n_cells, n_cells),
     )
 
 
 def read_graph(path, format=H5):
-    """Inverse of write_graph, and reader for the NNG stage output spec.
-
-    The spec (as the scanpy module writes it) keeps the distance CSR flat at
-    the file root -- that is what the R metrics reader consumes -- and nests
-    only connectivities. Our own writer nests both. Accept either.
+    """Inverse of write_graph, and reader for the NNG stage output spec:
+    the distance CSR flat at the file root, only connectivities nested.
     """
     if format != H5:
         raise ValueError(f"unsupported format: {format!r}")
     with h5py.File(path, "r") as h5:
         row_ids = list(h5["cell_ids"][:].astype(str))
         return NeighborGraph(
-            distances=_read_h5_sparse(h5.get("distances", h5), len(row_ids)),
+            distances=_read_h5_sparse(h5, len(row_ids)),
             connectivities=_read_h5_sparse(h5["connectivities"], len(row_ids)),
             row_ids=row_ids,
         )
