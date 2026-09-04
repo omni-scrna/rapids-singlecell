@@ -80,23 +80,24 @@ class NeighborGraph:
     row_ids: list                  # cell barcodes, length n_cells
 
 
-def _write_h5_sparse(h5, name, m):
+def _write_h5_sparse(grp, m):
     m = m.tocsr()
-    g = h5.create_group(name)
-    g.create_dataset("data",    data=m.data)
-    g.create_dataset("indices", data=m.indices)
-    g.create_dataset("indptr",  data=m.indptr)
-    g.create_dataset("shape",   data=np.array(m.shape))
+    grp.create_dataset("data",    data=m.data)
+    grp.create_dataset("indices", data=m.indices)
+    grp.create_dataset("indptr",  data=m.indptr)
 
 
 def _write_h5_graph(path, graph):
+    # NNG spec layout, byte-for-byte the shape the scanpy module writes: the
+    # distance CSR flat at the file root -- that is what the R metrics reader
+    # consumes -- and only connectivities nested. No `shape`: both graphs are
+    # square over the cell axis, so cell_ids is the authority.
+    # dtype="S": h5py cannot write numpy unicode ('<U'); bytes give the
+    # portable fixed-length HDF5 strings the R reader expects.
     with h5py.File(path, "w") as h5:
-        _write_h5_sparse(h5, "distances",      graph.distances)
-        _write_h5_sparse(h5, "connectivities", graph.connectivities)
-        h5.create_dataset(
-            "cell_ids",
-            data=np.array(graph.row_ids, dtype=h5py.string_dtype()),
-        )
+        h5.create_dataset("cell_ids", data=np.array(graph.row_ids, dtype="S"))
+        _write_h5_sparse(h5, graph.distances)
+        _write_h5_sparse(h5.create_group("connectivities"), graph.connectivities)
 
 
 def write_graph(obj, path, format=H5):

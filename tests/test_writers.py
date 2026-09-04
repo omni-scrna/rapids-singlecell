@@ -31,3 +31,29 @@ def test_reads_spec_layout(tmp_path, knn_h5):
     assert got.distances.shape == ours.distances.shape
     assert (got.distances != ours.distances).nnz == 0
     assert (got.connectivities != ours.connectivities).nnz == 0
+
+
+def test_writes_spec_layout(tmp_path, knn_h5):
+    """write_graph must EMIT the spec layout, not just read it.
+
+    The reader accepts both, so a nested-distances writer looks fine in a
+    round-trip and only fails downstream, in the R metrics reader that reads
+    /data directly.
+    """
+    from writers import write_graph
+
+    out = tmp_path / "out_neighbors.h5"
+    write_graph(read_graph(knn_h5), out)
+
+    with h5py.File(out, "r") as h5:
+        assert set(h5.keys()) == {"cell_ids", "connectivities",
+                                  "data", "indices", "indptr"}
+        assert "distances" not in h5          # flat at the root, not a group
+        assert "shape" not in h5
+        assert "shape" not in h5["connectivities"]
+
+    got = read_graph(out)
+    ours = read_graph(knn_h5)
+    assert got.row_ids == ours.row_ids
+    assert (got.distances != ours.distances).nnz == 0
+    assert (got.connectivities != ours.connectivities).nnz == 0
