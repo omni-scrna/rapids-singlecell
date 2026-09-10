@@ -6,7 +6,7 @@ from writers import read_embeddings, read_graph
 def _run(monkeypatch, tmp_path, pcas_tsv, n_neighbors=15, seed=42):
     monkeypatch.setattr(sys, "argv", [
         "knn.py",
-        "--pcas_tsv", str(pcas_tsv),
+        "--embedding_tsv", str(pcas_tsv),
         "--n_neighbors", str(n_neighbors),
         "--flavor", "rapids",
         "--random_seed", str(seed),

@@ -6,7 +6,7 @@ from writers import read_embeddings, read_labels
 def _run(monkeypatch, tmp_path, pcas_tsv, method, extra_args=(), seed=42):
     argv = [
         "cluster_embedding.py",
-        "--pcas_tsv", str(pcas_tsv),
+        "--embedding_tsv", str(pcas_tsv),
         "--method", method,
         "--output_dir", str(tmp_path),
         "--name", "test",
@@ -77,7 +77,7 @@ def test_hdbscan_rejects_seed(monkeypatch, tmp_path, pcas_tsv):
     import pytest
     monkeypatch.setattr(sys, "argv", [
         "cluster_embedding.py",
-        "--pcas_tsv", str(pcas_tsv),
+        "--embedding_tsv", str(pcas_tsv),
         "--method", "rapids-hdbscan",
         "--min_samples", "5",
         "--min_cluster_size", "30",

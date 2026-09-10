@@ -22,7 +22,7 @@ def _run(monkeypatch, tmp_path, normalized_h5, n_components=20, seed=42):
     ])
     from pca import main
     main()
-    return tmp_path / "test_pcas.tsv"
+    return tmp_path / "test_embedding.tsv"
 
 
 def test_pca_output_shape(monkeypatch, tmp_path, normalized_h5):
