@@ -18,7 +18,7 @@ Implementation notes
 - ``--method`` is an opaque token. Currently rapids-leiden and rapids-louvain
   are the only choices; both are graph-based community detection on the
   connectivities matrix. Embedding-based methods (kmeans / hdbscan / dbscan)
-  would belong in a separate entrypoint that takes ``--pcas_tsv`` instead
+  would belong in a separate entrypoint that takes ``--embedding_tsv`` instead
   (see cluster_embedding.py). Seed handling lives in src/options.py.
 - The synthetic ``X = zeros((n_cells, 1))`` is just a stand-in to give
   AnnData a well-formed obs axis; the actual computation runs on

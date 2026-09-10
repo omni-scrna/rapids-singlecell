@@ -3,9 +3,8 @@
 
 Input
 -----
-File: ``--pcas_tsv`` produced by the pca entrypoint of this module
-(or any module that emits the same TSV format: header = cell_id + PC names,
-each data row prefixed by cell barcode).
+File: ``--embedding_tsv`` from any producer of the shared embedding_tsv output id.
+Header = cell_id + dimension names (PC* or dim_*), each data row prefixed by cell barcode.
 
 Output
 ------
@@ -51,7 +50,7 @@ def parse_args():
     # common/cli injects the synced contract; method params are hand-rolled.
     p = argparse.ArgumentParser(description="OmniBenchmark kNN module (rapids-singlecell)")
     cli.add_base_args(p)            # --output_dir, --name
-    cli.add_stage_args(p, "NNG")    # --pcas_tsv
+    cli.add_stage_args(p, "NNG")    # --embedding_tsv
     p.add_argument("--n_neighbors", type=int, required=True,
                    help="Number of nearest neighbors")
     p.add_argument("--flavor", type=str, required=True,
@@ -74,7 +73,7 @@ def run_knn(adata, args):
 def main():
     args = parse_args()
     print(f"Full command: {' '.join(sys.argv)}")
-    for k in ("output_dir", "name", "pcas_tsv", "n_neighbors", "flavor", "random_seed"):
+    for k in ("output_dir", "name", "embedding_tsv", "n_neighbors", "flavor", "random_seed"):
         print(f"  {k}: {getattr(args, k)}")
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
@@ -83,7 +82,7 @@ def main():
     setup_gpu()
 
     with phase("load") as attrs:
-        emb = read_embeddings(args.pcas_tsv)
+        emb = read_embeddings(args.embedding_tsv)
         adata = embedding_to_adata(emb)
         attrs["n_cells"], attrs["n_components"] = emb.matrix.shape
         print(f"  embedding: {emb.matrix.shape}")

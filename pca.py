@@ -4,11 +4,13 @@ PCA module (rapids-singlecell-backed) for omnibenchmark.
 
 Output
 ------
-Files: {output_dir}/{name}_pcas.tsv      (PCA stage output: pcas_tsv)
-       {output_dir}/{name}_loadings.tsv  (PCA stage output: loadings_tsv)
+Files: {output_dir}/{name}_embedding.tsv  (PCA stage output: embedding_tsv)
+       {output_dir}/{name}_loadings.tsv   (PCA stage output: loadings_tsv)
 
-Tab-separated, float64, one row per cell (pcas) or per gene (loadings). Same
-layout as the scanpy module: header ``cell_id``/``gene_id`` then PC1..PCn.
+Tab-separated, float64, one row per cell (embedding) or per gene (loadings).
+Same layout as the scanpy module: header ``cell_id``/``gene_id`` then PC1..PCn.
+embedding_tsv is a shared output id -- PCA, ISOMAP and CNTFCT all emit it, so
+downstream stages fan out over whichever producers are in the plan.
 
 Implementation notes
 --------------------
@@ -165,7 +167,7 @@ def main():
 
     with phase("write") as attrs:
         col_names = [f"PC{i + 1}" for i in range(embedding.shape[1])]
-        out = Path(args.output_dir) / f"{args.name}_pcas.tsv"
+        out = Path(args.output_dir) / f"{args.name}_embedding.tsv"
         write_embeddings(Embedding(embedding, list(cell_ids), col_names), out)
 
         # Embedding is just a (matrix, row_ids) holder; write_loadings is what

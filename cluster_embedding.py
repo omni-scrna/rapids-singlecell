@@ -3,7 +3,8 @@
 
 Input
 -----
-File: ``--pcas_tsv`` produced by the pca entrypoint (cell-id-indexed PC scores).
+File: ``--embedding_tsv`` from any producer of the shared embedding_tsv output
+id (cell-id-indexed embedding coordinates).
 
 Output
 ------
@@ -51,10 +52,10 @@ from writers import Labels, read_embeddings, write_labels  # noqa: E402
 
 def parse_args():
     # No plan stage covers embedding-based clustering yet, but its input is the
-    # same pcas_tsv the NNG stage consumes, so borrow that arg contract.
+    # same embedding_tsv the NNG stage consumes, so borrow that arg contract.
     p = argparse.ArgumentParser(description="OmniBenchmark cluster-embedding module (rapids-singlecell)")
     cli.add_base_args(p)            # --output_dir, --name
-    cli.add_stage_args(p, "NNG")    # --pcas_tsv
+    cli.add_stage_args(p, "NNG")    # --embedding_tsv
     p.add_argument("--method", type=str, required=True,
                    choices=["rapids-kmeans", "rapids-hdbscan", "rapids-dbscan"],
                    help="Clustering method token (see module docstring)")
@@ -109,7 +110,7 @@ def run_cluster(adata, opts: ClusterEmbeddingOptions):
 def main():
     args = parse_args()
     print(f"Full command: {' '.join(sys.argv)}")
-    for k in ("output_dir", "name", "pcas_tsv", "method",
+    for k in ("output_dir", "name", "embedding_tsv", "method",
               "n_clusters", "min_samples", "min_cluster_size", "eps", "random_seed"):
         print(f"  {k}: {getattr(args, k)}")
 
@@ -121,7 +122,7 @@ def main():
     setup_gpu()
 
     with phase("load") as attrs:
-        embedding = read_embeddings(args.pcas_tsv)
+        embedding = read_embeddings(args.embedding_tsv)
         adata = embedding_to_adata(embedding)
         attrs["n_cells"], attrs["n_dims"] = adata.obsm["X_pca"].shape
         print(f"  embedding: {adata.n_obs} cells x {adata.obsm['X_pca'].shape[1]} dims")
