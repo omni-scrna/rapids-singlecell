@@ -86,6 +86,7 @@ def run_cluster(adata, opts: ClusterEmbeddingOptions):
             adata,
             n_clusters=opts.n_clusters,
             use_rep="X_pca",
+            n_pcs=adata.obsm["X_pca"].shape[1],
             random_state=opts.random_seed,
             key_added="cluster",
         )
