@@ -94,7 +94,7 @@ def main():
 
     assert outdir.exists() and outdir.is_dir()
     print(outdir)
-    init_logger(outdir)
+    init_logger(str(outdir))
 
     setup_gpu()
 
