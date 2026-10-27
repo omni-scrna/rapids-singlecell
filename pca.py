@@ -38,7 +38,7 @@ def parse_args():
     cli.add_base_args(p)             # --output_dir, --name
     cli.add_stage_args(p, "PCA")     # --normalized_selected_h5
     p.add_argument("--solver", type=str, required=True,
-                   choices=["rapids-randomized", "rapids-full"], help="PCA solver")
+                   choices=["rapids-randomized", "rapids-exact"], help="PCA solver")
     p.add_argument("--dtype", type=str, default="input",
                    choices=["input", "float32", "float64"],
                    help="cast the matrix before PCA (input = leave as read)")
