@@ -36,7 +36,7 @@ import rapids_singlecell as rsc
 from obkit.logger import init_logger
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
-from cli import build_pca_parser  # noqa: E402
+from common import cli
 from gpu import setup_gpu  # noqa: E402
 from loaders import load_matrix  # noqa: E402
 from phases import phase  # noqa: E402
