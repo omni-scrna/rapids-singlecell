@@ -89,6 +89,9 @@ def main():
 
     #Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
+    print(args.output_dir.__class__)
+    print(outdir.__class__)
+
     assert outdir.exists() and outdir.is_dir()
     print(outdir)
     init_logger(outdir)
