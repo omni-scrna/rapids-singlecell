@@ -82,8 +82,7 @@ def main():
         print(f"  {k}: {getattr(args, k)}")
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    print(args.output_dir)
-    init_logger(args.output_dir)
+    #init_logger(args.output_dir)
 
     setup_gpu()
 
