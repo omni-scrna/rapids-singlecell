@@ -14,6 +14,7 @@ GPU synchronization is used around PCA computation for timing.
 
 
 import sys
+import argparse
 from pathlib import Path
 
 import cupy as cp
@@ -23,11 +24,31 @@ import rapids_singlecell as rsc
 from obkit.logger import init_logger
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))
-from cli import build_pca_parser  # noqa: E402
+from common import cli
 from gpu import setup_gpu  # noqa: E402
 from loaders import load_matrix  # noqa: E402
 from phases import phase  # noqa: E402
 from writers import Embedding, write_embeddings  # noqa: E402
+
+def parse_args():
+    # We own the parser; src/common/cli injects the shared contract (base args + the
+    # `PCA` stage I/O from common/schema). This module's method params are
+    # hand-rolled below, so the whole CLI stays visible here.
+    p = argparse.ArgumentParser(description="PCA module (scanpy-backed)")
+    cli.add_base_args(p)             # --output_dir, --name
+    cli.add_stage_args(p, "PCA")     # --normalized_selected_h5
+    p.add_argument("--solver", type=str, required=True,
+                   choices=["rapids-randomized", "rapids-full"], help="PCA solver")
+    p.add_argument("--dtype", type=str, default="input",
+                   choices=["input", "float32", "float64"],
+                   help="cast the matrix before PCA (input = leave as read)")
+    p.add_argument("--n_components", type=int, required=True,
+                   help="Number of principal components to compute")
+    p.add_argument("--random_seed", type=int, required=True,
+                   help="Seed for randomized solvers (and for reproducibility)")
+    p.add_argument("--n_iter", type=int, default=2)
+    p.add_argument("--n_oversamples", type=int, default=10)
+    return p.parse_args()
 
 
 def run_pca(adata, args):
@@ -40,13 +61,19 @@ def run_pca(adata, args):
         raise ValueError(f"Unknown solver: {args.solver}")
 
 def main():
-    args = build_pca_parser().parse_args()
+    args = parse_args()
     print(f"Full command: {' '.join(sys.argv)}")
-    for k in ("output_dir", "name", "input_h5", "solver", "n_components", "random_seed", "n_iter", "n_oversamples",):
+    for k in ("output_dir", "name", "normalized_selected_h5", "solver", "n_components", "random_seed", "n_iter", "n_oversamples",):
         print(f"  {k}: {getattr(args, k)}")
 
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    init_logger(args.output_dir)
+    outdir = Path(args.output_dir)
+    try:
+        outdir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise RuntimeError(f"Could not create output directory {outdir}") from e
+
+    assert outdir.exists() and outdir.is_dir()
+    init_logger(str(outdir))
 
     setup_gpu()
 
