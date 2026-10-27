@@ -78,7 +78,7 @@ def main():
     setup_gpu()
 
     with phase("load") as attrs:
-        adata = load_matrix(args.input_h5)
+        adata = load_matrix(args.normalized_selected_h5)
         cell_ids = np.array(adata.obs_names)
         gene_ids = np.array(adata.var_names)
         attrs["n_cells"], attrs["n_genes"] = adata.shape
