@@ -81,8 +81,15 @@ def main():
     for k in ("output_dir", "name", "normalized_selected_h5", "solver", "n_components", "random_seed", "n_iter", "n_oversamples"):
         print(f"  {k}: {getattr(args, k)}")
 
-    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-    #init_logger(args.output_dir)
+    outdir = Path(args.output_dir)
+    try:
+        outdir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise RuntimeError(f"Could not create output directory {outdir}") from e
+
+    #Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+
+    init_logger(args.output_dir)
 
     setup_gpu()
 
