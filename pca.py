@@ -90,6 +90,7 @@ def main():
     #Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     assert outdir.exists() and outdir.is_dir()
+    print(outdir)
     init_logger(outdir)
 
     setup_gpu()
