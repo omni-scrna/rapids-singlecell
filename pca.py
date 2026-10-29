@@ -44,7 +44,7 @@ def parse_args():
                    help="cast the matrix before PCA (input = leave as read)")
     p.add_argument("--n_components", type=int, required=True,
                    help="Number of principal components to compute")
-    p.add_argument("--random_seed", type=int, required=True,
+    p.add_argument("--random_seed", type=int, required=False, default=42,
                    help="Seed for randomized solvers (and for reproducibility)")
     p.add_argument("--n_iter", type=int, default=2)
     p.add_argument("--n_oversamples", type=int, default=10)
