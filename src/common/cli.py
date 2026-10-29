@@ -27,14 +27,14 @@ Schema shape::
       "stage": "two-filter",
       "benchmark": "omni-scrna/split-stages-plan",
       "args": [
-        {"flag": "--pcas.tsv", "dest": "pcas", "type": "path", "help": "..."},
+        {"flag": "--embedding.tsv", "dest": "pcas", "type": "path", "help": "..."},
         {"flag": "--solver", "type": "string", "choices": ["arpack", "randomized"]}
       ]
     }
 
 Conventions for schema-declared args: each is **required** (a run is reproducible
 from its invocation line); ``dest`` defaults to the flag with dots/dashes turned
-into ``_`` (``--pcas.tsv`` -> ``pcas_tsv``) unless the schema overrides it. Types:
+into ``_`` (``--embedding.tsv`` -> ``embedding_tsv``) unless the schema overrides it. Types:
 ``path | string | integer | number``. An optional ``choices`` list restricts
 accepted values (an enum), like ``argparse``.
 
