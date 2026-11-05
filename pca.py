@@ -167,13 +167,13 @@ def main():
 
     with phase("write") as attrs:
         col_names = [f"PC{i + 1}" for i in range(embedding.shape[1])]
-        out = Path(args.output_dir) / f"{args.name}_embedding.tsv"
+        out = cli.output_path(args, "embedding_tsv", "_embedding.tsv")
         write_embeddings(Embedding(embedding, list(cell_ids), col_names), out)
 
         # Embedding is just a (matrix, row_ids) holder; write_loadings is what
         # stamps the gene_id header.
         gene_ids = np.array(adata.var_names)
-        loadings_out = Path(args.output_dir) / f"{args.name}_loadings.tsv"
+        loadings_out = cli.output_path(args, "loadings_tsv", "_loadings.tsv")
         write_loadings(Embedding(loadings, list(gene_ids), col_names), loadings_out)
 
         attrs["path"] = str(out)

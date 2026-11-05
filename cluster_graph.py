@@ -122,7 +122,7 @@ def main():
 
     with phase("write") as attrs:
         labels_arr = adata.obs["cluster"].astype(str).to_numpy()
-        out = Path(args.output_dir) / f"{args.name}_clusters.tsv"
+        out = cli.output_path(args, "clusters_tsv", "_clusters.tsv")
         write_labels(
             Labels(values=labels_arr, row_ids=list(graph.row_ids)),
             out,
