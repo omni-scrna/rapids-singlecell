@@ -138,6 +138,15 @@ def main():
 
     with phase("load") as attrs:
         adata = load_matrix(args.normalized_selected_h5, dense=args.dense == "true")
+        attrs["format"] = adata.uns["input_format"]
+        attrs["layout"] = "sparse" if sp.issparse(adata.X) else "dense"
+        print(f"  input: {attrs['format']}, {attrs['layout']}")
+        if SOLVERS[args.solver][1] == SPARSE and not sp.issparse(adata.X):
+            # A dense input (h5ad) for a sparse-only solver: convert rather than refuse, and
+            # record it; the conversion's time and memory belong to this load phase.
+            adata.X = sp.csr_matrix(adata.X)
+            attrs["converted"] = "dense to CSR"
+            print(f"  --solver {args.solver} is sparse-only: dense input converted to CSR")
         cell_ids = np.array(adata.obs_names)
         if args.dtype != "input":
             adata.X = adata.X.astype(args.dtype)
