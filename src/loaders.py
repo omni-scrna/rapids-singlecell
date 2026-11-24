@@ -1,6 +1,9 @@
 """Loaders for omnibenchmark rapids-singlecell modules.
 
-The HDF5 schema is the omni-scrna intermediate layout (CSC, genes x cells):
+load_matrix reads three input formats, detected from the file (detect_format): the
+omni-scrna intermediate layout below, Cell Ranger v3 HDF5 (10x) and h5ad (sparse or dense).
+
+The omni HDF5 schema is the omni-scrna intermediate layout (CSC, genes x cells):
 
     /matrix/data        (1D)  CSC values
     /matrix/indices     (1D)  CSC row indices (gene index per nonzero)
@@ -21,7 +24,45 @@ import numpy as np
 import scipy.sparse as sp
 
 
+def detect_format(h5_path):
+    """'omni', '10x' or 'h5ad', from the file's HDF5 layout (all arrive at the same path).
+
+    omni: /matrix with genes and barcodes (the layout above). 10x: /matrix with a features
+    group (Cell Ranger v3 HDF5). h5ad: AnnData (X, obs, var at the root), X sparse or dense.
+    """
+    with h5py.File(h5_path, "r") as h5:
+        if "matrix" in h5:
+            return "10x" if "features" in h5["matrix"] else "omni"
+        if "X" in h5 and "obs" in h5 and "var" in h5:
+            return "h5ad"
+    raise SystemExit(f"{h5_path}: neither the omni layout, 10x HDF5 nor h5ad")
+
+
 def load_matrix(h5_path, dense=False):
+    """Cells x genes AnnData from any input format, X as stored (CSR or dense); dense=True
+    materialises a sparse X dense. adata.uns["input_format"] records the format."""
+    fmt = detect_format(h5_path)
+    if fmt == "h5ad":
+        adata = ad.read_h5ad(h5_path)
+        if sp.issparse(adata.X):
+            adata.X = sp.csr_matrix(adata.X)
+    elif fmt == "10x":
+        import scanpy as sc
+        adata = sc.read_10x_h5(h5_path)
+        if "gene_ids" in adata.var:
+            adata.var_names = adata.var["gene_ids"].astype(str).to_numpy()
+        adata.var = adata.var.iloc[:, :0]
+    else:
+        adata = _load_omni(h5_path)
+    if dense and sp.issparse(adata.X):
+        # Drop the sparse copy so peak reflects one representation. Required for the
+        # dense-only solvers (full, jacobi).
+        adata.X = adata.X.toarray()
+    adata.uns["input_format"] = fmt
+    return adata
+
+
+def _load_omni(h5_path):
     with h5py.File(h5_path, "r") as h5:
         g = h5["matrix"]
         data = g["data"][:]
@@ -38,10 +79,6 @@ def load_matrix(h5_path, dense=False):
         cell_ids = g["barcodes"][:].astype(str)
 
     X = sp.csc_matrix((data, indices, indptr), shape=shape).T.tocsr()  # cells x genes
-    if dense:
-        # Drop the sparse copy before AnnData is built so peak reflects one
-        # representation. Required for the dense-only solvers (full, jacobi).
-        X = X.toarray()
     adata = ad.AnnData(X=X)
     adata.obs_names = cell_ids
     adata.var_names = gene_ids
