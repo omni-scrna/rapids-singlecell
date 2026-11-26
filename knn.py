@@ -26,6 +26,15 @@ Implementation notes
 - The synthetic ``X = zeros((n_cells, 1))`` is just a stand-in to give
   AnnData a well-formed obs axis; the actual neighbors computation runs
   on ``obsm["X_pca"]`` (use_rep="X_pca").
+- ``--connectivities`` sets the edge weights written as /connectivities, on
+  the same neighbours: ``native`` (rsc's UMAP weights, today's behaviour),
+  ``umap`` (the same, named explicitly) or ``snn``: Seurat's shared-nearest-
+  neighbour graph, |N_i & N_j| / |N_i | N_j| over neighbour sets with each cell
+  itself included, edges below ``--snn_prune`` (default 1/15, Seurat's
+  prune.SNN) removed, diagonal 1. Computed on the host from the neighbours, so
+  it is the same graph the scanpy, Seurat and brisc kNN modules write for
+  ``snn`` (rsc's own ``method="jaccard"`` is PhenoGraph's variant: kNN edges
+  only, averaged, unpruned).
 - ``random_seed`` is best-effort: only some ANN backends consult it
   (IVF training, for instance). For a fully deterministic graph, prefer
   brute-force once that token is added.
@@ -35,7 +44,9 @@ import argparse
 import sys
 from pathlib import Path
 
+import numpy as np
 import rapids_singlecell as rsc
+import scipy.sparse as sp
 from obkit.logger import init_logger
 
 sys.path.insert(0, str(Path(__file__).parent / "src"))  # vendored `common` (src/common) + module-local helpers
@@ -57,7 +68,27 @@ def parse_args():
                    choices=["rapids"],
                    help="kNN flavor token (see module docstring)")
     p.add_argument("--random_seed", type=int, required=True, help="Random seed")
+    p.add_argument("--connectivities", type=str, default="native",
+                   choices=["native", "umap", "snn"],
+                   help="edge weights: native/umap (rsc's UMAP weights) or snn (Seurat's SNN); see module docstring")
+    p.add_argument("--snn_prune", type=float, default=1 / 15,
+                   help="--connectivities snn: drop edges below this Jaccard index (Seurat's prune.SNN)")
     return p.parse_args()
+
+
+def snn_connectivities(distances, prune=1 / 15):
+    """Seurat's SNN graph from a kNN graph's neighbour sets (its stored entries, each cell
+    itself added): the Jaccard index |N_i & N_j| / |N_i | N_j| for every pair sharing a
+    neighbour, entries below `prune` dropped. Symmetric, diagonal 1."""
+    n = distances.shape[0]
+    a = sp.csr_matrix((np.ones(distances.nnz, dtype=np.float32), distances.indices.copy(),
+                       distances.indptr.copy()), shape=(n, n))
+    a = ((a + sp.identity(n, dtype=np.float32, format="csr")) > 0).astype(np.float32)
+    k = np.asarray(a.sum(axis=1)).ravel()
+    shared = (a @ a.T).tocoo()
+    jac = shared.data / (k[shared.row] + k[shared.col] - shared.data)
+    keep = jac >= prune
+    return sp.csr_matrix((jac[keep], (shared.row[keep], shared.col[keep])), shape=(n, n))
 
 
 def run_knn(adata, args):
@@ -73,7 +104,7 @@ def run_knn(adata, args):
 def main():
     args = parse_args()
     print(f"Full command: {' '.join(sys.argv)}")
-    for k in ("output_dir", "name", "embedding_tsv", "n_neighbors", "flavor", "random_seed"):
+    for k in ("output_dir", "name", "embedding_tsv", "n_neighbors", "flavor", "random_seed", "connectivities"):
         print(f"  {k}: {getattr(args, k)}")
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
@@ -93,9 +124,15 @@ def main():
     with phase("compute") as attrs:
         run_knn(adata, args)
         attrs["n_neighbors"] = args.n_neighbors
+        attrs["connectivities"] = args.connectivities
 
     with phase("gpu_download"):
         rsc.get.anndata_to_CPU(adata, convert_all=True)
+
+    if args.connectivities == "snn":
+        with phase("snn") as attrs:
+            adata.obsp["connectivities"] = snn_connectivities(adata.obsp["distances"], args.snn_prune)
+            attrs["snn_prune"] = args.snn_prune
 
     with phase("write") as attrs:
         out = cli.output_path(args, "neighbors_h5", "_neighbors.h5")
