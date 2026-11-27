@@ -140,7 +140,7 @@ def main():
 
     with phase("write") as attrs:
         labels_arr = adata.obs["cluster"].astype(str).to_numpy()
-        out = Path(args.output_dir) / f"{args.name}_clusters.tsv"
+        out = cli.output_path(args, "clusters_embedding_tsv", "_clusters.tsv")  # CLUST_E
         write_labels(
             Labels(values=labels_arr, row_ids=list(embedding.row_ids)),
             out,

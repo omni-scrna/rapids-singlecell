@@ -98,7 +98,7 @@ def main():
         rsc.get.anndata_to_CPU(adata, convert_all=True)
 
     with phase("write") as attrs:
-        out = Path(args.output_dir) / f"{args.name}_neighbors.h5"
+        out = cli.output_path(args, "neighbors_h5", "_neighbors.h5")
         graph = NeighborGraph(
             distances=adata.obsp["distances"],
             connectivities=adata.obsp["connectivities"],
